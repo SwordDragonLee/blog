@@ -15,37 +15,44 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-sm font-bold text-white shadow-sm">
-              AI
-            </span>
-            <span className="flex flex-col leading-tight">
-              <span className="text-[17px] font-bold tracking-tight text-slate-900">
-                AI 技术观察
-              </span>
-              <span className="text-xs text-slate-500">
-                洞察 AI 前沿与工程实践
-              </span>
-            </span>
-          </Link>
-          <nav className="text-sm font-medium text-slate-600">
-            <Link href="/" className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-blue-600">
-              文章
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <html lang="zh-CN">
+      <body className="antialiased">
+        <div className="flex min-h-screen flex-col">
+          <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur">
+            <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
+              <Link href="/" className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-sm font-bold text-white shadow-sm">
+                  AI
+                </span>
+                <span className="flex flex-col leading-tight">
+                  <span className="text-[17px] font-bold tracking-tight text-slate-900">
+                    AI 技术观察
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    洞察 AI 前沿与工程实践
+                  </span>
+                </span>
+              </Link>
+              <nav className="text-sm font-medium text-slate-600">
+                <Link
+                  href="/"
+                  className="rounded-lg px-3 py-1.5 transition hover:bg-slate-100 hover:text-blue-600"
+                >
+                  文章
+                </Link>
+              </nav>
+            </div>
+          </header>
 
-      {children}
+          {children}
 
-      <footer className="mt-14 border-t border-slate-200 bg-white">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 text-center text-sm text-slate-500">
-          Powered by AI 博客生成平台
+          <footer className="mt-14 border-t border-slate-200 bg-white">
+            <div className="mx-auto w-full max-w-5xl px-4 py-6 text-center text-sm text-slate-500">
+              Powered by AI 博客生成平台
+            </div>
+          </footer>
         </div>
-      </footer>
-    </div>
+      </body>
+    </html>
   );
 }
