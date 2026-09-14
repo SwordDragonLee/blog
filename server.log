@@ -1,0 +1,2 @@
+{"level":30,"time":1789364473106,"pid":23360,"hostname":"有少少强","msg":"config>{\"host\":\"localhost\",\"user\":\"root\",\"password\":\"******\",\"database\":\"dragon\",\"port\":3306}"}
+{"level":30,"time":1789364473107,"pid":23360,"hostname":"有少少强","msg":"MySQL MCP server running on stdio"}

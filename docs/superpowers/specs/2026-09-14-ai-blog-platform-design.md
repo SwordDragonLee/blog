@@ -118,10 +118,16 @@ blog/
 | 表 | 关键字段 |
 |---|---|
 | `admin_user` | id, username, password_hash(bcrypt), created_at |
+
+后端启动时 GORM AutoMigrate 建表；若 `admin_user` 为空，则按 viper 配置（默认 `admin / admin123`，可改）自动创建管理员。
+
+| 表（续） | 关键字段 |
 | `gen_task` | id, git_url, status(pending/running/success/failed), progress(int 0-100), step, message, error, repo_analysis_id, created_at, updated_at |
 | `repo_analysis` | id, git_url, default_branch, tech_stack(JSON), summary, highlights(JSON), created_at |
 | `article` | id, repo_analysis_id, title, slug(唯一), summary, content_md(MEDIUMTEXT), word_count, tags(JSON), status(draft/published/offline), sort_order, published_at, created_at, updated_at |
 | `svg_asset` | id, article_id, kind, title, spec(JSON), svg_content(MEDIUMTEXT), created_at |
+
+slug 由 LLM 在写作输出中给出英文 slug，后端校验唯一性，冲突时追加短随机后缀；标题重复同理。
 
 ### 文章状态机
 
