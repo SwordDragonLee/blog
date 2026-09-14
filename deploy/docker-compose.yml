@@ -1,0 +1,60 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: blog-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 deploy/.env 中设置}
+      MYSQL_DATABASE: blog
+      TZ: Asia/Shanghai
+    ports:
+      # 本机 3306（原生 MySQL）与 3307（go-zero-mysql 容器）已被占用，映射到 3309
+      - "3309:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:?请在 deploy/.env 中设置}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: blog-redis
+    restart: unless-stopped
+    ports:
+      # 本机 6379 已被其他容器占用，映射到 6380
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: blog-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: blog
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?请在 deploy/.env 中设置}
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # 管理界面 http://localhost:15672
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:

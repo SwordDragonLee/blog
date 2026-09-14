@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/* ---------- 全站基础 ---------- */
+
+html {
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    "微软雅黑",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+::selection {
+  background-color: #bfdbfe;
+  color: #0f172a;
+}
+
+/* ---------- 文章正文排版（阅读向，白底暗字） ---------- */
+
+.prose-blog {
+  color: #334155;
+  font-size: 1rem;
+  line-height: 1.85;
+  overflow-wrap: break-word;
+}
+
+.prose-blog > :first-child {
+  margin-top: 0;
+}
+
+.prose-blog h1,
+.prose-blog h2,
+.prose-blog h3,
+.prose-blog h4 {
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.prose-blog h2 {
+  margin: 2.5rem 0 1rem;
+  padding-left: 0.7rem;
+  border-left: 4px solid #2563eb;
+  font-size: 1.5rem;
+}
+
+.prose-blog h3 {
+  margin: 2rem 0 0.85rem;
+  font-size: 1.22rem;
+}
+
+.prose-blog h4 {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.prose-blog p {
+  margin: 1.1rem 0;
+}
+
+.prose-blog a {
+  color: #2563eb;
+  text-decoration-line: underline;
+  text-decoration-color: #93c5fd;
+  text-underline-offset: 3px;
+}
+
+.prose-blog a:hover {
+  text-decoration-color: #2563eb;
+}
+
+.prose-blog strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.prose-blog ul,
+.prose-blog ol {
+  margin: 1.1rem 0;
+  padding-left: 1.6rem;
+}
+
+.prose-blog ul {
+  list-style: disc;
+}
+
+.prose-blog ol {
+  list-style: decimal;
+}
+
+.prose-blog li {
+  margin: 0.4rem 0;
+}
+
+.prose-blog li::marker {
+  color: #94a3b8;
+}
+
+/* 行内代码 */
+.prose-blog :not(pre) > code {
+  padding: 0.15em 0.4em;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background-color: #f1f5f9;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.875em;
+}
+
+/* 代码块（底色与 highlight.js github-dark 主题一致） */
+.prose-blog pre {
+  margin: 1.5rem 0;
+  padding: 1.15rem 1.35rem;
+  border-radius: 12px;
+  background-color: #0d1117;
+  overflow-x: auto;
+  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 0.15);
+  font-size: 0.875rem;
+  line-height: 1.75;
+}
+
+.prose-blog pre code {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: inherit;
+}
+
+.prose-blog pre::-webkit-scrollbar {
+  height: 8px;
+}
+
+.prose-blog pre::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: #30363d;
+}
+
+.prose-blog blockquote {
+  margin: 1.5rem 0;
+  padding: 0.85rem 1.25rem;
+  border-left: 4px solid #93c5fd;
+  border-radius: 0 10px 10px 0;
+  background-color: #f8fafc;
+  color: #475569;
+}
+
+.prose-blog blockquote p {
+  margin: 0.35rem 0;
+}
+
+/* 文章配图（SVG 经 <img> 引入） */
+.prose-blog img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.75rem auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #ffffff;
+}
+
+.prose-blog hr {
+  margin: 2.25rem 0;
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* GFM 表格 */
+.prose-blog table {
+  width: 100%;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+}
+
+.prose-blog th,
+.prose-blog td {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.prose-blog th {
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.prose-blog tr:nth-child(even) td {
+  background-color: #fcfdfe;
+}
