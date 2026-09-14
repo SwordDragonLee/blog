@@ -9,7 +9,7 @@
 
 1. **前台博客网站**（Next.js）：面向读者，展示已发布的文章，图文结合。
 2. **管理平台**（React + Antd + MobX）：面向管理员，提交 Git 仓库地址、查看生成进度、编辑/预览/审核文章、发版。
-3. **Go 后端**（Gin + GORM + zap + viper）：提供管理端与前台只读 API，执行异步生成任务（克隆仓库 → 调用 LLM 分析与写作 → 渲染 SVG 配图 → 入库待审）。
+3. **Go 后端**（Gin + GORM + zap + viper + RabbitMQ）：提供管理端与前台只读 API；耗时生成任务经 RabbitMQ 异步执行（克隆仓库 → 调用 LLM 分析与写作 → 渲染 SVG 配图 → 入库待审）。
 
 核心用户流程：
 
@@ -26,9 +26,10 @@
 | 日志 | zap | 结构化日志，dev/prod 两种模式 |
 | 配置 | viper | `config.yaml` + 环境变量覆盖（LLM base_url/api_key/model 等） |
 | 缓存/进度 | Redis 7 | 任务实时进度、前台文章缓存、LLM 限流 |
+| 任务队列 | RabbitMQ 3 | 耗时生成任务异步化：API 落库后投递消息，worker 消费执行；消息持久化 + 失败重试 + 死信队列 |
 | LLM | OpenAI 兼容接口（可配置） | 通过配置切换 DeepSeek / 通义千问 / GLM / OpenAI 等 |
 | 配图 | SVG 程序化渲染 | LLM 输出结构化图表数据，Go 端确定性渲染，零外部依赖 |
-| 依赖编排 | Docker Compose | 仅 MySQL + Redis；Go 与前端本地运行 |
+| 依赖编排 | Docker Compose | MySQL + Redis + RabbitMQ；Go 与前端本地运行 |
 
 ## 3. 总体架构
 
@@ -41,9 +42,19 @@
          └──────────┬──────────────┘
                     ▼
          ┌─────────────────────┐      ┌──────────────┐
-         │  Go 后端 (Gin)       │─────▶│  OpenAI 兼容  │
-         │  · 异步生成 worker    │      │  LLM 服务     │
-         │  · git shallow clone │      └──────────────┘
+         │  Go API (Gin)        │─────▶│  OpenAI 兼容  │
+         │  · 落库 + 投递消息    │      │  LLM 服务     │
+         └────────┬────────────┘      └──────▲───────┘
+                  ▼                          │
+         ┌─────────────────────┐             │
+         │  RabbitMQ            │             │
+         │  blog.task.generate  │             │
+         └────────┬────────────┘             │
+                  ▼                          │
+         ┌─────────────────────┐            │
+         │  Go Worker（同二进制  │────────────┘
+         │  独立 goroutine 消费）│
+         │  · git shallow clone │
          │  · SVG 图表渲染器     │
          └────┬──────────┬─────┘
               ▼          ▼
@@ -51,6 +62,8 @@
           │ MySQL │  │ Redis │   (Docker Compose 拉起)
           └───────┘  └───────┘
 ```
+
+RabbitMQ 拓扑：direct exchange `blog.tasks`，队列 `blog.task.generate`（持久化），死信队列 `blog.task.dlq`（重试超限后进入并标记任务失败）。Go 后端为单二进制：启动时同时拉起 Gin API 与 MQ consumer（独立 goroutine），部署简单且任务语义完整。
 
 ## 4. Monorepo 目录结构
 
@@ -65,7 +78,8 @@ blog/
 │   │   ├── llm/            # OpenAI 兼容客户端（chat + JSON 输出校验重试）
 │   │   ├── analyzer/       # git shallow clone + 技术栈识别 + 代码采样
 │   │   ├── svggen/         # SVG 图表渲染器（cover/architecture/flow/compare/timeline）
-│   │   ├── task/           # 异步任务调度（goroutine worker + Redis 进度）
+│   │   ├── mq/             # RabbitMQ 连接、发布者、消费者（拓扑声明、ack/nack、死信）
+│   │   ├── task/           # 任务执行 pipeline（由 MQ consumer 调用，进度写 Redis）
 │   │   ├── model/          # GORM 模型
 │   │   └── config/         # viper 配置加载
 │   ├── config.yaml
@@ -74,14 +88,14 @@ blog/
 │   ├── blog/               # Next.js 前台
 │   └── admin/              # 管理平台
 ├── deploy/
-│   └── docker-compose.yml  # MySQL 8 + Redis 7
+│   └── docker-compose.yml  # MySQL 8 + Redis 7 + RabbitMQ 3
 ├── docs/                   # 设计文档
 └── README.md
 ```
 
 ## 5. 核心生成流水线（异步任务）
 
-管理平台提交 git 地址 → 创建 `gen_task` → goroutine worker 异步执行，进度写 Redis，管理平台每 2 秒轮询：
+管理平台提交 git 地址 → API 创建 `gen_task`（pending）并投递消息到 RabbitMQ → worker 消费执行，进度写 Redis，管理平台每 2 秒轮询：
 
 | 步骤 | 内容 | 进度 |
 |---|---|---|
@@ -193,9 +207,10 @@ published 可再编辑：保存后回到 draft，需重新发版
 
 ## 11. 错误处理
 
-- LLM 调用：超时 + 指数退避重试；JSON 校验失败重试（最多 3 次）；仍失败则任务置 `failed` 并记录 error，可一键重跑。
+- LLM 调用：超时 + 指数退避重试；JSON 校验失败重试（最多 3 次）；仍失败则任务置 `failed` 并记录 error，可一键重跑（重跑 = 重新投递 MQ 消息）。
 - git clone 失败（仓库不存在 / 私有仓库 / 非公开）：明确错误信息写入任务。
-- 任务执行中服务重启：任务残留 `running`，启动时将超时 running 任务标记为 failed（可重跑）。
+- MQ 消费失败：nack 并重投，同一任务最多重试 3 次，超限进入死信队列 `blog.task.dlq` 并将任务标记 `failed`。
+- 服务重启：未 ack 的消息由 RabbitMQ 自动重新投递；pipeline 幂等（文章按 slug upsert，SVG 按 article_id 重建），重跑安全。
 - 发布时缓存失效失败：重试，失败不阻塞发版（TTL 兜底）。
 
 ## 12. 测试策略
