@@ -24,6 +24,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      # 备案期间临时预览口（配合 nginx conf 里的 8081/8082 预览块）；备案通过后随预览块一起删
+      - "8081:8081"
+      - "8082:8082"
     volumes:
       - ./nginx/blog.conf:/etc/nginx/conf.d/blog.conf:ro
       - ./nginx/admin.conf:/etc/nginx/conf.d/admin.conf:ro
