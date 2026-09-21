@@ -23,13 +23,14 @@ cd deploy
 docker compose up -d
 ```
 
-- MySQL: localhost:3309（root / <见 deploy/.env>，库 blog；3306/3307 已被本机其他服务占用）
+- MySQL: localhost:3309（root，库 blog；3306/3307 已被本机其他服务占用）
 - Redis: localhost:6380（本机 6379 已被占用）
-- RabbitMQ: localhost:5672（管理界面 http://localhost:15672，blog / <见 deploy/.env>）
+- RabbitMQ: localhost:5672（管理界面 http://localhost:15672）
+- 密码统一在 `deploy/.env`（参考 `MYSQL_ROOT_PASSWORD`、`RABBITMQ_DEFAULT_PASS`；首次启动前需自建该文件，已被 gitignore 忽略）
 
 ### 2. 配置并启动后端
 
-编辑 `server/config.yaml`，填写 `llm.api_key`，或启动前设置环境变量 `LLM_API_KEY`。
+复制 `server/.env.example` 为 `server/.env` 并填入密钥（如 `LLM_API_KEY`），或直接以环境变量提供。
 
 ```bash
 cd server
