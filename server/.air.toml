@@ -1,0 +1,28 @@
+# air 热更新配置：保存 .go / .yaml 后自动重编译重启（task server 运行）
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# 编译到 tmp 目录，避免污染源码树
+cmd = "go build -o ./tmp/main.exe ./cmd/server"
+# entrypoint 不带参数（Windows 下 air 会给参数误加 .exe 后缀）；
+# main.go 的 -config 默认值就是 config.yaml，且以 server/ 为工作目录启动
+entrypoint = "./tmp/main.exe"
+include_ext = ["go", "yaml"]
+include_dir = ["cmd", "internal"]
+exclude_dir = ["tmp", "docs"]
+# 配置里 JWT/MQ 等有连接开销，给编译+启动留点缓冲
+delay = 1000
+stop_on_error = true
+# main.go 支持 SIGINT 优雅停机（HTTP → consumer → MQ），先中断再等 3s 强杀
+send_interrupt = true
+kill_delay = 3000
+
+[log]
+time = true
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"

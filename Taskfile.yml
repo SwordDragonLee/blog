@@ -1,0 +1,36 @@
+version: "3"
+
+tasks:
+  default:
+    desc: 同时启动后端（热更新）与管理端、博客前端
+    deps: [server, admin, blog]
+
+  server:
+    desc: 后端开发（air 热更新，改动 .go/.yaml 自动重启）
+    dir: server
+    cmds:
+      - air
+
+  build:
+    desc: 编译后端 server.exe
+    dir: server
+    cmds:
+      - go build -o server.exe ./cmd/server
+
+  admin:
+    desc: 管理端前端开发（Vite）
+    dir: web/admin
+    cmds:
+      - npm run dev
+
+  blog:
+    desc: 博客前端开发（Next.js）
+    dir: web/blog
+    cmds:
+      - npm run dev
+
+  vet:
+    desc: 后端代码检查
+    dir: server
+    cmds:
+      - go vet ./...
