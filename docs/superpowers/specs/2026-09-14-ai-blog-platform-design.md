@@ -9,7 +9,7 @@
 
 1. **前台博客网站**（Next.js）：面向读者，展示已发布的文章，图文结合。
 2. **管理平台**（React + Antd + MobX）：面向管理员，提交 Git 仓库地址、查看生成进度、编辑/预览/审核文章、发版。
-3. **Go 后端**（Gin + GORM + zap + viper + RabbitMQ）：提供管理端与前台只读 API；耗时生成任务经 RabbitMQ 异步执行（克隆仓库 → 调用 LLM 分析与写作 → 渲染 SVG 配图 → 入库待审）。
+3. **Go 后端**（Gin + GORM + zap + viper + RabbitMQ）：提供管理端与前台只读 API；耗时生成任务经 RabbitMQ 异步执行（克隆仓库 → 调用 LLM 分析与写作 → 渲染 SVG 配图 → 文章入库（draft））。
 
 核心用户流程：
 
@@ -104,7 +104,7 @@ blog/
 | ③ LLM 分析 | 第一轮：输入仓库摘要 + 代码采样，输出 JSON：技术栈清单、架构摘要、代码亮点、4 篇文章选题大纲 | 30% |
 | ④ 逐篇写作 | 第二轮：每篇一次调用，输出 JSON：`{title, summary, tags, markdown, figures[]}`；Markdown 中用 `{{figure:id}}` 占位插图 | 30%→90% |
 | ⑤ 渲染配图 | svggen 将 figures 渲染为风格统一的 SVG（含每篇封面图）入库 | 95% |
-| ⑥ 入库待审 | 4 篇文章落库为 `draft`，`repo_analysis` 落库，任务完成 | 100% |
+| ⑥ 完成 | 4 篇文章落库为 `draft`，`repo_analysis` 落库，任务结束（审核属于文章状态机，非任务阶段） | 100% |
 
 ### 文章规划（每次生成 4 篇，字数由系统设定）
 
