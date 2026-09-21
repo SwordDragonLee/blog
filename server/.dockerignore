@@ -1,0 +1,5 @@
+# 构建上下文瘦身；关键红线：config.yaml 含真实 API key，禁止进入镜像上下文
+config.yaml
+tmp/
+*.exe
+*.log

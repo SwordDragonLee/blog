@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1
+# blog（Next.js）生产镜像（构建上下文 = web/blog/ 目录，Dockerfile 与 server/admin 统一放 docker/）：
+#   docker build -f docker/Dockerfile.blog -t blog-blog:latest ./web/blog
+# 前置条件：next.config.ts 已开启 output: 'standalone'（镜像只装运行所需的最小产物）。
+# API_BASE 在构建期固化为 compose 网络内的 server 服务名（rewrites 是构建期写死的）；
+# 运行期 RSC 取数同样读该变量，两个阶段保持一致。
+FROM node:22-alpine AS build
+WORKDIR /app
+ENV API_BASE=http://server:8080 NEXT_TELEMETRY_DISABLED=1
+# 国内网络默认走 npmmirror，境外网络可 --build-arg NPM_REGISTRY=https://registry.npmjs.org 覆盖
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+COPY package.json package-lock.json ./
+RUN npm config set registry ${NPM_REGISTRY} && npm ci
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 API_BASE=http://server:8080 NEXT_TELEMETRY_DISABLED=1
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+EXPOSE 3000
+CMD ["node", "server.js"]

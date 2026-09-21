@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+# server 生产镜像（构建上下文 = server/ 目录）：
+#   docker build -f docker/Dockerfile.server -t blog-server:latest ./server
+# 多阶段：golang 静态编译（CGO 关闭，产物不依赖 glibc）→ alpine 运行层。
+# config.yaml 含真实 API key，不打入镜像（.dockerignore 已排除），运行时只读挂载 /app/config.yaml。
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+# 国内网络默认走 goproxy.cn，境外网络可 --build-arg GOPROXY=https://proxy.golang.org,direct 覆盖
+ARG GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=${GOPROXY}
+# 先只拷贝依赖清单：依赖不变时 go mod download 命中缓存，重建很快
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -o /out/server ./cmd/server
+
+FROM alpine:3.20
+# tzdata：日志与 MySQL 时间统一东八区；ca-certificates：出网调用 LLM/SiliconFlow/Git 需要
+RUN apk add --no-cache tzdata ca-certificates \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone
+WORKDIR /app
+COPY --from=build /out/server ./server
+EXPOSE 8080
+ENTRYPOINT ["./server", "-config", "/app/config.yaml"]
