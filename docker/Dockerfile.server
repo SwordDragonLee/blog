@@ -15,8 +15,9 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -o /out/server ./cmd/server
 
 FROM alpine:3.20
-# tzdata：日志与 MySQL 时间统一东八区；ca-certificates：出网调用 LLM/SiliconFlow/Git 需要
-RUN apk add --no-cache tzdata ca-certificates \
+# tzdata：日志与 MySQL 时间统一东八区；ca-certificates：出网调用 LLM/SiliconFlow 需要；
+# git：任务流水线克隆仓库必需（缺失时克隆秒败，报「git 未输出错误信息」）
+RUN apk add --no-cache tzdata ca-certificates git \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone
 WORKDIR /app
