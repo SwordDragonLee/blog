@@ -125,13 +125,15 @@ services:
     image: redis:7-alpine
     container_name: blog-redis
     restart: unless-stopped
-    # 生产必须设密码（config.yaml 的 redis.password 与之保持一致）
+    # 密码同时供 redis-server 启动与容器内 healthcheck 使用（与 mysql 的 MYSQL_ROOT_PASSWORD 同款模式）
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}"]
     volumes:
       - redis-data:/data
     logging: *default-logging
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD --no-auth-warning ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -167,7 +169,8 @@ services:
       - qdrant-data:/qdrant/storage
     logging: *default-logging
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/6333 || exit 1"]
+      # /dev/tcp 是 bash 特性，必须用 bash -c 包裹（镜像内无 curl/wget，CMD-SHELL 的 sh 不认）
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333 || exit 1'"]
       interval: 10s
       timeout: 5s
       retries: 20

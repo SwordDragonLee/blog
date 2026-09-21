@@ -5,7 +5,23 @@
       "Bash(git check-ignore *)",
       "Bash(xargs -r -n1 git update-ref -d)",
       "Bash(git reflog *)",
-      "Bash(git gc *)"
+      "Bash(git gc *)",
+      "Bash(curl -x http://127.0.0.1:7890 -s --max-time 15 -o /dev/null -w 'HTTP %{http_code}, 耗时 %{time_total}s\\\\n' https://github.com)",
+      "Bash(curl -x http://127.0.0.1:7890 -s --max-time 15 -o /dev/null -w 'HTTP %{http_code}\\\\n' http://www.google.com/generate_204)",
+      "Bash(curl -s --max-time 10 -o /dev/null -w 'HTTP %{http_code}\\\\n' https://github.com)",
+      "Bash(git config *)",
+      "Bash(git push *)",
+      "Bash(git -c http.version=HTTP/1.1 push -u origin main)",
+      "Bash(git count-objects *)",
+      "Bash(git -c http.version=HTTP/1.1 ls-remote origin)",
+      "Bash(curl -x http://127.0.0.1:7890 -sL --max-time 60 -o /dev/null -w 'HTTP %{http_code}, 拉取 %{size_download} 字节, 平均 %{speed_download} B/s\\\\n' https://github.com/git/git/archive/refs/tags/v2.40.0.tar.gz)",
+      "Bash(ssh -p 443 -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o BatchMode=yes -T git@ssh.github.com)",
+      "Read(//c/Users/86159/.ssh/**)",
+      "Bash(cat ~/.ssh/config 2>/dev/null || echo '（暂无 config）')",
+      "Bash(git remote *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\86159\\.ssh"
     ]
   }
 }
