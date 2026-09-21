@@ -1,0 +1,134 @@
+# CI/CD：push main 自动构建三端镜像 → 推腾讯云 TCR 个人版 → SSH 触发服务器拉取重启。
+# 服务器只做 pull，不参与构建（2C4G）；首次部署仍按 docs/deployment-guide.md 手工初始化。
+#
+# 前置一次性配置（GitHub 仓库 Settings → Secrets and variables → Actions）：
+#   Variables：REGISTRY（如 registry.cn-guangzhou.tencentcloudcr.com，与 ECS 同地域）
+#              NAMESPACE（TCR 个人版命名空间）
+#   Secrets：  TCR_USERNAME（腾讯云账号 ID）、TCR_PASSWORD（开通 TCR 时设置的密码）、
+#              SSH_HOST（服务器 IP）、SSH_USER（如 root）、SSH_KEY（部署专用私钥全文）
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # 手动触发：首次配好 Secrets 后先手跑一次验证
+
+# 部署不并发：上一次没跑完时新的排队等待，避免服务器上 pull/up 互相踩
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ${{ vars.REGISTRY }}
+  NAMESPACE: ${{ vars.NAMESPACE }}
+
+jobs:
+  # ── 识别本次推送改了哪一端，只构建受影响的镜像 ──────────────
+  changes:
+    name: 识别改动范围
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      blog: ${{ steps.filter.outputs.blog }}
+      admin: ${{ steps.filter.outputs.admin }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # push 事件需与上一次提交做 diff，浅克隆 1 层不够
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            server:
+              - 'server/**'
+              - 'docker/Dockerfile.server'
+            blog:
+              - 'web/blog/**'
+              - 'docker/Dockerfile.blog'
+            admin:
+              - 'web/admin/**'
+              - 'docker/Dockerfile.admin'
+            infra:
+              - 'docker/compose.prod.yml'
+              - 'docker/nginx/**'
+
+  # ── 构建并推送（三个步骤条件执行，只建受影响的；全部未变则整 job 跳过）──
+  build-push:
+    name: 构建并推送镜像
+    needs: changes
+    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.blog == 'true' || needs.changes.outputs.admin == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 计算版本 tag（latest + git 短 SHA；回滚时把服务器 .env 的 tag 换回旧 SHA 即可）
+        id: tag
+        run: echo "short=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - name: 登录 TCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.TCR_USERNAME }}
+          password: ${{ secrets.TCR_PASSWORD }}
+
+      # 境外 runner 走官方源（Dockerfile 里的国内镜像源默认值只适合国内环境，故显式覆盖）
+      - name: 构建 server
+        if: needs.changes.outputs.server == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./server
+          file: docker/Dockerfile.server
+          push: true
+          build-args: GOPROXY=https://proxy.golang.org,direct
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/blog-server:latest
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/blog-server:${{ steps.tag.outputs.short }}
+
+      - name: 构建 blog
+        if: needs.changes.outputs.blog == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web/blog
+          file: docker/Dockerfile.blog
+          push: true
+          build-args: NPM_REGISTRY=https://registry.npmjs.org
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/blog-blog:latest
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/blog-blog:${{ steps.tag.outputs.short }}
+
+      - name: 构建 admin
+        if: needs.changes.outputs.admin == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web/admin
+          file: docker/Dockerfile.admin
+          push: true
+          build-args: NPM_REGISTRY=https://registry.npmjs.org
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/blog-admin:latest
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/blog-admin:${{ steps.tag.outputs.short }}
+
+  # ── 服务器拉取并重启（镜像有更新 or 仅 conf 变更时执行；构建失败则不发版）──
+  deploy:
+    name: 服务器拉取并重启
+    needs: [changes, build-push]
+    if: always() && needs.build-push.result != 'failure' && (needs.build-push.result == 'success' || needs.changes.outputs.infra == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH 部署
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script_stop: true # 任一命令失败即中止，不半途而废
+          script: |
+            cd /opt/blog
+            # 只拉三端自有镜像（中间件官方镜像走腾讯内网加速，不在每次发版范围）
+            docker compose -f compose.prod.yml pull server blog admin
+            docker compose -f compose.prod.yml up -d
+            # bind-mount 的 nginx conf 变更 up -d 感知不到，需重启重读配置
+            docker compose -f compose.prod.yml restart nginx
+            docker image prune -f # 清理被顶替的旧镜像层，防磁盘吃满

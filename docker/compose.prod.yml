@@ -2,7 +2,8 @@
 # 与本地 deploy/docker-compose.yml 的关键差异：
 #   1. 中间件端口一律不映射宿主机（只有 nginx 的 80/443 对外）；RabbitMQ 管理界面绑回环走 SSH 隧道
 #   2. 全部服务 restart: unless-stopped + 日志限额，named volume 持久化（向量库数据必须落盘）
-#   3. 镜像在本机构建、save/scp/load 上云（2C4G 禁止在服务器上构建）
+#   3. 三端镜像不在服务器构建（2C4G）：本机 save/scp/load 上云，或 CI 推 TCR 后服务器 pull
+#      （.env 里 SERVER_IMAGE/BLOG_IMAGE/ADMIN_IMAGE 三行切换，不设则用本地镜像名）
 # 用法（/opt/blog 下，同目录需有 .env、config.yaml、nginx/*.conf）：
 #   docker compose -f compose.prod.yml up -d
 name: blog
@@ -38,7 +39,8 @@ services:
 
   # ── 三端 ────────────────────────────────────────────────
   server:
-    image: blog-server:latest
+    # save/scp 路线用本地名；CI/CD 路线在 .env 设 SERVER_IMAGE=<TCR 地址>/<命名空间>/blog-server:latest
+    image: ${SERVER_IMAGE:-blog-server:latest}
     container_name: blog-server
     restart: unless-stopped
     # 配置只有一份（server/config.yaml，不含密钥）：拓扑固定项由下面 environment 注入，
@@ -76,7 +78,7 @@ services:
       start_period: 15s
 
   blog:
-    image: blog-blog:latest
+    image: ${BLOG_IMAGE:-blog-blog:latest}
     container_name: blog-blog
     restart: unless-stopped
     environment:
@@ -93,7 +95,7 @@ services:
       start_period: 15s
 
   admin:
-    image: blog-admin:latest
+    image: ${ADMIN_IMAGE:-blog-admin:latest}
     container_name: blog-admin
     restart: unless-stopped
     environment:
