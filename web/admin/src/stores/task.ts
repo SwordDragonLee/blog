@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import dayjs from 'dayjs';
-import { get, post } from '../api/http';
+import { get, post, del } from '../api/http';
 import type { GenTask, PageData, TaskStatus } from '../types';
 
 const POLL_INTERVAL = 2000;
@@ -51,6 +51,21 @@ export class TaskStore {
     this.startPolling(id);
   }
 
+  /** 取消排队中/运行中的任务 */
+  async cancel(id: number): Promise<void> {
+    await post(`/tasks/${id}/cancel`);
+    this.stopPolling();
+    await this.fetchTask(id).catch(() => undefined);
+    await this.fetchTasks();
+  }
+
+  /** 删除任务及其衍生数据（草稿文章、配图、分析记录） */
+  async remove(id: number): Promise<void> {
+    await del(`/tasks/${id}`);
+    if (this.current?.id === id) this.resetCurrent();
+    await this.fetchTasks();
+  }
+
   async fetchTask(id: number): Promise<GenTask> {
     this.currentLoading = true;
     try {
@@ -78,7 +93,11 @@ export class TaskStore {
             this.current = task;
             this.appendLog(task);
           });
-          if (task.status === 'success' || task.status === 'failed') {
+          if (
+            task.status === 'success' ||
+            task.status === 'failed' ||
+            task.status === 'canceled'
+          ) {
             this.stopPolling();
           }
         } catch {

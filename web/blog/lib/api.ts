@@ -33,6 +33,7 @@ export interface ArticleListItem {
   /** 后端为 JSON 数组，这里宽松处理 */
   tags?: unknown;
   word_count?: number | null;
+  like_count?: number | null;
   status?: string | null;
   cover_asset_id?: number | null;
   published_at?: string | null;
@@ -46,6 +47,7 @@ export interface ArticleDetail {
   content_md?: string | null;
   tags?: unknown;
   word_count?: number | null;
+  like_count?: number | null;
   published_at?: string | null;
   cover?: PortalCover | null;
   figures?: PortalFigure[];
@@ -99,6 +101,30 @@ export async function getPortalArticles(
 
 export async function getPortalArticle(slug: string): Promise<ArticleDetail | null> {
   return request<ArticleDetail>(`/api/v1/portal/articles/${encodeURIComponent(slug)}`);
+}
+
+export interface LikeResult {
+  like_count: number;
+  duplicated: boolean;
+}
+
+/**
+ * 客户端点赞：走相对路径（next rewrites 代理到 Go 后端，同源无跨域）。
+ * 服务端按 IP 去重，重复点赞返回当前计数并置 duplicated=true；失败返回 null。
+ */
+export async function likeArticle(slug: string): Promise<LikeResult | null> {
+  try {
+    const res = await fetch(
+      `/api/v1/portal/articles/${encodeURIComponent(slug)}/like`,
+      { method: "POST", headers: { accept: "application/json" } },
+    );
+    if (!res.ok) return null;
+    const body = (await res.json()) as Envelope<LikeResult> | null;
+    if (!body || typeof body.code !== "number" || body.code !== 0) return null;
+    return body.data;
+  } catch {
+    return null;
+  }
 }
 
 /** tags 后端是 JSON 数组（也可能被序列化成字符串），统一归一化为 string[] */

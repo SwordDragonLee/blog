@@ -6,6 +6,7 @@ import {
   normalizeTags,
   type ArticleListItem,
 } from "@/lib/api";
+import HeartIcon from "@/components/HeartIcon";
 
 /** 无封面时的渐变占位（按文章 id 稳定选取，刷新不变） */
 const COVER_GRADIENTS = [
@@ -80,7 +81,15 @@ export default function ArticleCard({ article }: { article: ArticleListItem }) {
 
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400">
           <span>{date ?? "未发布"}</span>
-          {words && <span>{words}</span>}
+          <span className="flex items-center gap-3">
+            {words && <span>{words}</span>}
+            {(article.like_count ?? 0) > 0 && (
+              <span className="flex items-center gap-1">
+                <HeartIcon className="h-3 w-3" />
+                {article.like_count}
+              </span>
+            )}
+          </span>
         </div>
       </div>
     </article>

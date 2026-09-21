@@ -32,6 +32,14 @@ export const ArticleEdit = observer(function ArticleEdit() {
     });
   }, [articleId]);
 
+  // 文章加载/切换完成后，把正文同步进编辑器；
+  // 不监听 content_md 本身，避免保存或重取详情时覆盖正在编辑的内容
+  useEffect(() => {
+    if (isCurrent) {
+      setContentMd(current?.content_md ?? '');
+    }
+  }, [isCurrent, current?.id]);
+
   const onRegenerate = async () => {
     const hide = message.loading('正在重新生成配图（调用 LLM + 渲染），请稍候...', 0);
     try {
@@ -109,21 +117,22 @@ export const ArticleEdit = observer(function ArticleEdit() {
               </Button>
             </Popconfirm>
           )}
-          <Popconfirm
-            title="确认发版？"
-            description="发版后文章在前台立即可见。"
-            onConfirm={() => void onPublish()}
-          >
-            <Button
-              type="primary"
-              ghost
-              icon={<CloudUploadOutlined />}
-              loading={articleStore.publishing}
-              disabled={!isCurrent}
+          {isCurrent && current.status !== 'published' && (
+            <Popconfirm
+              title="确认发版？"
+              description="发版后文章在前台立即可见。"
+              onConfirm={() => void onPublish()}
             >
-              发版
-            </Button>
-          </Popconfirm>
+              <Button
+                type="primary"
+                ghost
+                icon={<CloudUploadOutlined />}
+                loading={articleStore.publishing}
+              >
+                发版
+              </Button>
+            </Popconfirm>
+          )}
           <Button
             type="primary"
             icon={<SaveOutlined />}

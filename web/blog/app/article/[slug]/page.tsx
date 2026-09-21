@@ -12,6 +12,8 @@ import {
   inlineFigures,
   normalizeTags,
 } from "@/lib/api";
+import LikeButton from "@/components/LikeButton";
+import ShareButton from "@/components/ShareButton";
 
 /** ISR：60s 重新验证 */
 export const revalidate = 60;
@@ -116,6 +118,12 @@ export default async function ArticlePage({ params }: Props) {
           </div>
         </div>
       </article>
+
+      {/* 读完后点赞/分享：正文与返回列表之间 */}
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <LikeButton slug={article.slug} initialCount={article.like_count ?? 0} />
+        <ShareButton />
+      </div>
 
       <div className="mt-6 text-center">
         <Link

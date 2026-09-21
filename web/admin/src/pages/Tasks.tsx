@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Button, Progress, Table, Tag, Tooltip, message } from 'antd';
-import { PlusOutlined, RedoOutlined, EyeOutlined } from '@ant-design/icons';
+import { Button, Popconfirm, Progress, Table, Tag, Tooltip, message } from 'antd';
+import {
+  DeleteOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  RedoOutlined,
+  StopOutlined,
+} from '@ant-design/icons';
 import { observer } from 'mobx-react-lite';
 import dayjs from 'dayjs';
 import { taskStore } from '../stores';
@@ -14,6 +20,7 @@ const TASK_COLOR: Record<string, string> = {
   running: 'processing',
   success: 'success',
   failed: 'error',
+  canceled: 'default',
 };
 
 export const Tasks = observer(function Tasks() {
@@ -43,6 +50,24 @@ export const Tasks = observer(function Tasks() {
       message.success('已重新投递任务');
     } catch (e) {
       message.error((e as Error).message || '重试失败');
+    }
+  };
+
+  const onCancel = async (id: number) => {
+    try {
+      await taskStore.cancel(id);
+      message.success('任务已取消');
+    } catch (e) {
+      message.error((e as Error).message || '取消失败');
+    }
+  };
+
+  const onDelete = async (id: number) => {
+    try {
+      await taskStore.remove(id);
+      message.success('任务已删除');
+    } catch (e) {
+      message.error((e as Error).message || '删除失败');
     }
   };
 
@@ -120,7 +145,7 @@ export const Tasks = observer(function Tasks() {
           {
             title: '操作',
             key: 'action',
-            width: 150,
+            width: 210,
             render: (_, record) => (
               <>
                 <Button
@@ -140,6 +165,28 @@ export const Tasks = observer(function Tasks() {
                   >
                     重试
                   </Button>
+                )}
+                {(record.status === 'pending' || record.status === 'running') && (
+                  <Popconfirm
+                    title="确定取消该任务？"
+                    description="运行中的任务会尽快中断，已生成的草稿文章会被保留。"
+                    onConfirm={() => void onCancel(record.id)}
+                  >
+                    <Button type="link" size="small" icon={<StopOutlined />} danger>
+                      取消
+                    </Button>
+                  </Popconfirm>
+                )}
+                {['success', 'failed', 'canceled'].includes(record.status) && (
+                  <Popconfirm
+                    title="删除该任务？"
+                    description="将删除任务记录、分析记录、草稿文章与配图；有已发布文章时需先下线。"
+                    onConfirm={() => void onDelete(record.id)}
+                  >
+                    <Button type="link" size="small" icon={<DeleteOutlined />} danger>
+                      删除
+                    </Button>
+                  </Popconfirm>
                 )}
               </>
             ),

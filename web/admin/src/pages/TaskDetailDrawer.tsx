@@ -13,16 +13,17 @@ const TASK_COLOR: Record<string, string> = {
   failed: 'error',
 };
 
-// 与后端 pipeline 步骤对齐（见设计文档 §5）
-const STEPS = ['克隆仓库', '仓库分析', 'LLM 分析', '逐篇写作', '渲染配图', '入库完成'];
+// 与后端 pipeline 的 prog.step 步骤名对齐（task/pipeline.go）：
+// 开始/克隆仓库/仓库分析/LLM 分析/撰写文章/完成。
+// 渲染配图在撰写文章循环内完成，不单列；审核属于文章状态机，不是任务阶段。
+const STEPS = ['克隆仓库', '仓库分析', 'LLM 分析', '撰写文章', '完成'];
 
 const STEP_KEYWORDS: RegExp[] = [
   /clone|克隆/i,
   /analy|scan|detect|仓库分析|采样/i,
   /llm|outline|选题|大纲/i,
-  /writ|article|写作/i,
-  /svg|figure|render|渲染/i,
-  /done|save|seeds|入库/i,
+  /writ|article|写作|撰写/i,
+  /done|save|seeds|入库|完成/i,
 ];
 
 function currentStepIndex(step: string, status: string): number {

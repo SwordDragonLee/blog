@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AiChat from "@/components/AiChat";
 import "./globals.css";
 import "highlight.js/styles/github-dark.css";
 
@@ -45,6 +46,9 @@ export default function RootLayout({
           </header>
 
           {children}
+
+          {/* 全站悬浮 AI 问答（基于站内文章的 RAG 检索回答） */}
+          <AiChat />
 
           <footer className="mt-14 border-t border-slate-200 bg-white">
             <div className="mx-auto w-full max-w-5xl px-4 py-6 text-center text-sm text-slate-500">

@@ -79,3 +79,10 @@ export async function put<T>(
 ): Promise<T> {
   return http.put(url, data, config) as unknown as Promise<T>;
 }
+
+export async function del<T>(
+  url: string,
+  config?: object,
+): Promise<T> {
+  return http.delete(url, config) as unknown as Promise<T>;
+}

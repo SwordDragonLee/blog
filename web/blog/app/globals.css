@@ -207,3 +207,120 @@ body {
 .prose-blog tr:nth-child(even) td {
   background-color: #fcfdfe;
 }
+
+/* ===== AI 问答气泡内的紧凑 markdown 样式（配色沿用 prose-blog，字号间距缩小） ===== */
+.prose-chat {
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-wrap: break-word;
+}
+
+.prose-chat > :first-child {
+  margin-top: 0;
+}
+
+.prose-chat > :last-child {
+  margin-bottom: 0;
+}
+
+.prose-chat h1,
+.prose-chat h2,
+.prose-chat h3,
+.prose-chat h4 {
+  margin: 1rem 0 0.5rem;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.prose-chat p {
+  margin: 0.6rem 0;
+}
+
+.prose-chat a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-color: #93c5fd;
+  text-underline-offset: 2px;
+}
+
+.prose-chat strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.prose-chat ul,
+.prose-chat ol {
+  margin: 0.6rem 0;
+  padding-left: 1.3rem;
+}
+
+.prose-chat ul {
+  list-style: disc;
+}
+
+.prose-chat ol {
+  list-style: decimal;
+}
+
+.prose-chat li {
+  margin: 0.25rem 0;
+}
+
+.prose-chat :not(pre) > code {
+  padding: 0.1em 0.35em;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  background-color: #f1f5f9;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85em;
+}
+
+.prose-chat pre {
+  margin: 0.6rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background-color: #0d1117;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.prose-chat pre code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: inherit;
+}
+
+.prose-chat blockquote {
+  margin: 0.6rem 0;
+  padding: 0.5rem 0.8rem;
+  border-left: 3px solid #93c5fd;
+  border-radius: 0 8px 8px 0;
+  background-color: #f8fafc;
+  color: #475569;
+}
+
+.prose-chat table {
+  width: 100%;
+  margin: 0.6rem 0;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.prose-chat th,
+.prose-chat td {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.prose-chat th {
+  background-color: #f8fafc;
+  font-weight: 600;
+}

@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Tasks } from './pages/Tasks';
 import { Articles } from './pages/Articles';
 import { ArticleEdit } from './pages/ArticleEdit';
+import { RagIndex } from './pages/RagIndex';
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:id/edit" element={<ArticleEdit />} />
+          <Route path="/rag-index" element={<RagIndex />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

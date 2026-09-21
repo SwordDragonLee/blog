@@ -89,6 +89,12 @@ export const Articles = observer(function Articles() {
           },
           { title: '字数', dataIndex: 'word_count', width: 90 },
           {
+            title: '点赞',
+            dataIndex: 'like_count',
+            width: 70,
+            render: (v?: number) => v ?? 0,
+          },
+          {
             title: '状态',
             dataIndex: 'status',
             width: 96,

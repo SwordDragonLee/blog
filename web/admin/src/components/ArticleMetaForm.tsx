@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Card, Col, Descriptions, Form, Input, Row, Select, Tag } from 'antd';
 import type { FormInstance } from 'antd';
+import dayjs from 'dayjs';
 import { ARTICLE_STATUS_TEXT } from '../types';
 import type { ArticleDetail } from '../types';
 
@@ -71,7 +72,9 @@ export function ArticleMetaForm({
               {ARTICLE_STATUS_TEXT[current.status] || current.status}
             </Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="发布时间">{current.published_at || '-'}</Descriptions.Item>
+          <Descriptions.Item label="发布时间">
+            {current.published_at ? dayjs(current.published_at).format('YYYY-MM-DD HH:mm') : '-'}
+          </Descriptions.Item>
         </Descriptions>
       )}
     </Card>

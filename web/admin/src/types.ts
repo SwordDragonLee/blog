@@ -3,6 +3,7 @@
 export interface AdminUser {
   id: number;
   username: string;
+  email?: string;
   created_at?: string;
 }
 
@@ -12,7 +13,7 @@ export interface LoginResp {
 }
 
 // 生成任务状态
-export type TaskStatus = 'pending' | 'running' | 'success' | 'failed';
+export type TaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'canceled';
 
 export interface GenTask {
   id: number;
@@ -38,6 +39,7 @@ export interface Article {
   summary: string;
   content_md?: string;
   word_count: number;
+  like_count?: number;
   tags: string[];
   status: ArticleStatus;
   sort_order: number;
@@ -87,9 +89,31 @@ export const TASK_STATUS_TEXT: Record<string, string> = {
   running: '运行中',
   success: '成功',
   failed: '失败',
+  canceled: '已取消',
 };
 
 // 前台配图访问地址（经 vite proxy 转发到 Go 后端）
 export function figureUrl(id: number): string {
   return `/api/v1/portal/figures/${id}`;
+}
+
+// RAG 向量索引总览（按文章分组的向量块统计）
+export interface RagIndexStat {
+  slug: string;
+  title: string;
+  chunks: number;
+}
+
+export interface RagIndexOverview {
+  articles: RagIndexStat[];
+  total_chunks: number;
+}
+
+// 检索测试命中（pass = 得分达到阈值，真实问答会采纳）
+export interface RagProbeHit {
+  score: number;
+  slug: string;
+  title: string;
+  snippet: string;
+  pass: boolean;
 }
