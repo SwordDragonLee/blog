@@ -96,7 +96,20 @@ export const Tasks = observer(function Tasks() {
         }}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 64 },
-          { title: 'Git 仓库', dataIndex: 'git_url', ellipsis: true },
+          {
+            title: 'Git 仓库',
+            dataIndex: 'git_url',
+            // 溢出省略 + 悬停气泡展示完整地址（ellipsis: true 的原生 title 弹出慢且不可靠）
+            ellipsis: { showTitle: false },
+            render: (text: string) =>
+              text ? (
+                <Tooltip title={text} placement="topLeft">
+                  <span>{text}</span>
+                </Tooltip>
+              ) : (
+                '-'
+              ),
+          },
           {
             title: '状态',
             dataIndex: 'status',
