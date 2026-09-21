@@ -18,7 +18,24 @@
       "Bash(ssh -p 443 -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o BatchMode=yes -T git@ssh.github.com)",
       "Read(//c/Users/86159/.ssh/**)",
       "Bash(cat ~/.ssh/config 2>/dev/null || echo '（暂无 config）')",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(curl -s -H 'Host: blog.localhost' http://localhost/api/v1/portal/articles)",
+      "Bash(curl -s -X POST -H 'Host: blog.localhost' -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"admin123\"}' http://localhost/api/v1/auth/login)",
+      "Bash(curl -s -H 'Host: blog.localhost' http://localhost/ -o /dev/null -w 'HTTP %{http_code}\\\\n')",
+      "Bash(curl -s -H 'Host: admin.localhost' http://localhost/ -o /dev/null -w 'HTTP %{http_code}\\\\n')",
+      "Bash(curl -s http://127.0.0.1/ -o /dev/null -w 'HTTP %{http_code}\\\\n' --max-time 5)",
+      "Bash(git -C /d/agent/blog add docker/compose.prod.yml)",
+      "Bash(git -C /d/agent/blog commit -m 'fix: 生产 compose 健康检查修复（redis 容器注入密码，qdrant 改用 bash 探活）' --quiet)",
+      "Bash(git -C /d/agent/blog log --oneline -1)",
+      "Bash(docker build *)",
+      "Bash(git -C /d/agent/blog add docker/Dockerfile.server)",
+      "Bash(git -C /d/agent/blog commit -m 'fix: server 镜像运行层补装 git（缺失导致容器内克隆秒败）' --quiet)",
+      "Bash(git -C /d/agent/blog log --oneline -2)",
+      "Bash(gofmt -l internal/qdrant/)",
+      "Bash(git -C /d/agent/blog add server/internal/qdrant/http.go server/internal/qdrant/search.go server/internal/qdrant/delete.go)",
+      "Bash(git -C /d/agent/blog commit -m 'fix: Qdrant 集合尚未创建时优雅降级（总览空列表、检索无命中、删除幂等）' --quiet)",
+      "Bash(sed -i 's/www\\\\.blog\\\\.localhost/www.ljl0628.cn/g; s/blog\\\\.localhost/ljl0628.cn/g' docker/nginx/blog.conf)",
+      "Bash(sed -i 's/admin\\\\.localhost/admin.ljl0628.cn/g' docker/nginx/admin.conf)"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh"
