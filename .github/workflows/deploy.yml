@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2 # push 事件需与上一次提交做 diff，浅克隆 1 层不够
+          fetch-depth: 0 # 完整历史：一次推多个提交时浅克隆会把 paths-filter 的 diff 算错
       - id: filter
         uses: dorny/paths-filter@v3
         with:
@@ -131,6 +131,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script_stop: true # 任一命令失败即中止，不半途而废
           script: |
+            set -e # 真失败即停（不能依赖 action 的 script_stop，实测未生效——2026-09-22 首次部署假绿教训）
             cd /opt/blog
             # 只拉三端自有镜像（中间件官方镜像走腾讯内网加速，不在每次发版范围）
             docker compose -f compose.prod.yml pull server blog admin
