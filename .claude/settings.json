@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git filter-branch *)"
+      "Bash(git filter-branch *)",
+      "Bash(git check-ignore *)"
     ]
   }
 }
