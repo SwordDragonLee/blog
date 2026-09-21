@@ -1,0 +1,84 @@
+# 服务配置（非私密项）。私密数据（密钥/密码）一律放同目录 .env，不写在本文件；
+# 键名规则：配置项点号换下划线全大写（llm.api_key → LLM_API_KEY），进程环境变量优先
+server:
+  port: 8080
+  mode: debug # debug / release
+
+mysql:
+  host: localhost
+  port: 3309 # Docker 映射端口（本机 3306/3307 已被占用）
+  user: root
+  password: "" # 私密项：由 .env 的 MYSQL_PASSWORD 注入
+  database: blog
+
+redis:
+  addr: localhost:6380
+  password: ""
+  db: 0
+
+rabbitmq:
+  url: amqp://blog@localhost:5672/ # 密码段由 .env 的 RABBITMQ_URL（完整 URL）注入
+
+llm:
+  # 任意 OpenAI 兼容服务：DeepSeek / 通义千问 / GLM / OpenAI 等；
+  # 端点含 "/anthropic" 时自动切换 Anthropic Messages 协议（如智谱 Coding Plan）
+  base_url: https://open.bigmodel.cn/api/anthropic
+  api_key: "" # 私密项：由 .env 的 LLM_API_KEY 注入
+  model: glm-4.6 # Coding Plan 套餐模型，质量远高于免费的 glm-4.5-flash（免费档可改回）
+  timeout_seconds: 600 # 免费模型生成慢，放宽单次调用超时
+  temperature: 0.7
+  max_tokens: 16384 # Anthropic 协议必传且思考已关闭，16K 保证长文不被截断
+  rate_per_minute: 20
+
+auth:
+  jwt_secret: "" # 私密项：由 .env 的 AUTH_JWT_SECRET 注入（openssl rand -hex 32 生成）
+  admin_user: admin
+  admin_password: "" # 私密项：由 .env 的 AUTH_ADMIN_PASSWORD 注入
+  token_hours: 72
+
+task:
+  workdir: tmp # 克隆仓库的临时目录（相对 server 运行目录）
+  clone_timeout_seconds: 600 # react 等大仓库浅克隆耗时较长，180 秒不够用
+  proxy: "" # 主机相关项：本机由 .env 的 TASK_PROXY 注入（如 http://127.0.0.1:7890，github 直连不通时）；容器内直连
+  max_files: 30 # 采样代码文件数上限
+  max_file_kb: 16 # 单文件截断大小
+  total_budget_kb: 120 # 采样内容总预算
+  article_count: 4 # 每次生成文章数
+  concurrency: 1 # 同时处理的任务数
+  max_retry: 3 # MQ 消费失败重试次数
+
+# 发布成功邮件通知（SMTP）。password 填邮箱服务商的「授权码」而非登录密码，
+# QQ 邮箱在 设置-账号-POP3/SMTP 服务 开启后生成；真实凭据勿提交
+email:
+  enabled: false # 改为 true 并填好 SMTP 信息后，发版成功会邮件通知发布者
+  host: smtp.qq.com
+  port: 465 # SSL 端口
+  username: "" # SMTP 登录账号，如 xxx@qq.com
+  password: "" # SMTP 授权码
+  # from: "" # 发件人，缺省等于 username
+  site_url: http://localhost:3000 # 前台博客地址，邮件里拼文章链接用
+
+# 向量数据库（RAG 技术问答）：deploy/docker-compose.yml 里的 qdrant 服务
+qdrant:
+  base_url: http://localhost:6333
+  collection: blog_articles
+
+# RAG 技术问答。embedding 走 OpenAI 兼容 /embeddings 端点（当前用 SiliconFlow 免费的 BAAI/bge-m3）；
+# llm.base_url 含 /anthropic 时（如本配置）必须单配 embedding_base_url
+rag:
+  enabled: true # 总开关：false 时问答接口返回 503，文章发布不受影响
+  embedding_base_url: https://api.siliconflow.cn/v1 # SiliconFlow OpenAI 兼容端点；留空则复用 llm.base_url
+  embedding_api_key: "" # 私密项：由 .env 的 RAG_EMBEDDING_API_KEY 注入
+  embedding_model: BAAI/bge-m3 # embedding 模型名；换模型需同步改 dimensions 并重建 Qdrant 集合
+  embedding_dimensions: 1024 # 向量维度，必须与模型实际输出一致（bge-m3 为 1024）
+  embedding_send_dimensions: false # 是否随请求发 dimensions：智谱 embedding-3 需 true，bge-m3 等固定维度模型保持 false
+  # 问答专用对话模型：面向公众、调用量大，用免费档 glm-4-flash，不消耗生成套餐额度；
+  # 走标准 OpenAI 兼容端点（与主模型的 Coding Plan /anthropic 端点不同）。留空 chat_model 则复用主模型
+  chat_model: glm-4-flash
+  chat_base_url: https://open.bigmodel.cn/api/paas/v4
+  chat_api_key: "" # 留空复用 llm.api_key（免费模型不扣余额）
+  chat_max_tokens: 2048 # 单次回答长度上限，问答无需长文
+  chunk_size: 800 # 切块目标字符数（中文按字计），标题处优先断开
+  chunk_overlap: 100 # 相邻块重叠字符数，避免答案句被截断在边界上
+  top_k: 5 # 每次提问检索的相似片段条数
+  score_threshold: 0.3 # 相似度分数阈值，低于该值的命中视为噪声丢弃

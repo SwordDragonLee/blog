@@ -3,8 +3,10 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -16,6 +18,9 @@ type Config struct {
 	LLM      LLM      `mapstructure:"llm"`
 	Auth     Auth     `mapstructure:"auth"`
 	Task     Task     `mapstructure:"task"`
+	Email    Email    `mapstructure:"email"`
+	Qdrant   Qdrant   `mapstructure:"qdrant"`
+	RAG      RAG      `mapstructure:"rag"`
 }
 
 type Server struct {
@@ -61,6 +66,7 @@ type Auth struct {
 type Task struct {
 	WorkDir             string `mapstructure:"workdir"`
 	CloneTimeoutSeconds int    `mapstructure:"clone_timeout_seconds"`
+	Proxy               string `mapstructure:"proxy"` // 克隆走 HTTP 代理（如 http://127.0.0.1:7890），留空直连
 	MaxFiles            int    `mapstructure:"max_files"`
 	MaxFileKB           int    `mapstructure:"max_file_kb"`
 	TotalBudgetKB       int    `mapstructure:"total_budget_kb"`
@@ -69,8 +75,50 @@ type Task struct {
 	MaxRetry            int    `mapstructure:"max_retry"`
 }
 
-// Load 读取指定路径的 yaml 配置，环境变量可覆盖同名 key（点号换下划线）。
+// Email SMTP 邮件通知配置（发布成功后通知发布者）。
+type Email struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"` // 默认 465（SSL）
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"` // SMTP 授权码，非邮箱登录密码
+	From     string `mapstructure:"from"`     // 发件人，缺省等于 username
+	SiteURL  string `mapstructure:"site_url"` // 前台博客地址，用于拼文章链接
+}
+
+// Qdrant 向量数据库连接配置（RAG 技术问答）。
+type Qdrant struct {
+	BaseURL    string `mapstructure:"base_url"`   // REST 地址，如 http://localhost:6333
+	Collection string `mapstructure:"collection"` // 集合名，缺省 blog_articles
+}
+
+// RAG 技术问答配置：切块、检索与 embedding 参数；
+// chat_* 为问答专用对话模型（面向公众、调用量大，建议免费模型），不配置则复用主模型。
+type RAG struct {
+	Enabled             bool   `mapstructure:"enabled"`
+	EmbeddingBaseURL    string `mapstructure:"embedding_base_url"`   // 空 = 复用 llm.base_url
+	EmbeddingAPIKey     string `mapstructure:"embedding_api_key"`    // 空 = 复用 llm.api_key
+	EmbeddingModel      string `mapstructure:"embedding_model"`      // 缺省 embedding-3
+	EmbeddingDimensions int    `mapstructure:"embedding_dimensions"` // 向量维度，缺省 2048
+	// EmbeddingSendDimensions 是否随请求发送 dimensions 参数：智谱 embedding-3 支持指定维度需传 true；
+	// BAAI/bge-m3 等固定维度模型不认该参数（传了报 400），保持 false
+	EmbeddingSendDimensions bool    `mapstructure:"embedding_send_dimensions"`
+	ChatModel               string  `mapstructure:"chat_model"`      // 空 = 复用 llm 主模型
+	ChatBaseURL             string  `mapstructure:"chat_base_url"`   // 空 = 复用 llm.base_url
+	ChatAPIKey              string  `mapstructure:"chat_api_key"`    // 空 = 复用 llm.api_key
+	ChatMaxTokens           int     `mapstructure:"chat_max_tokens"` // 单次回答长度上限，缺省 2048
+	ChunkSize               int     `mapstructure:"chunk_size"`      // 切块目标字符数，缺省 800
+	ChunkOverlap            int     `mapstructure:"chunk_overlap"`   // 相邻块重叠字符数，缺省 100
+	TopK                    int     `mapstructure:"top_k"`           // 检索条数，缺省 5
+	ScoreThreshold          float32 `mapstructure:"score_threshold"` // 相似度阈值，低于丢弃，缺省 0.3
+}
+
+// Load 读取指定路径的 yaml 配置。config.yaml 只放非私密配置；
+// 密钥/密码等私密项经环境变量注入（同名 key 点号换下划线，如 llm.api_key → LLM_API_KEY），
+// 来源优先级：进程环境变量 > 配置文件同目录的 .env（存在才加载，且不覆盖已有环境变量）。
 func Load(path string) (*Config, error) {
+	_ = godotenv.Load(filepath.Join(filepath.Dir(path), ".env"))
+
 	v := viper.New()
 	v.SetConfigFile(path)
 	v.AutomaticEnv()
@@ -131,5 +179,35 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Auth.TokenHours == 0 {
 		c.Auth.TokenHours = 72
+	}
+	if c.Email.Port == 0 {
+		c.Email.Port = 465
+	}
+	if c.Email.From == "" {
+		c.Email.From = c.Email.Username
+	}
+	if c.Qdrant.Collection == "" {
+		c.Qdrant.Collection = "blog_articles"
+	}
+	if c.RAG.EmbeddingModel == "" {
+		c.RAG.EmbeddingModel = "embedding-3"
+	}
+	if c.RAG.EmbeddingDimensions == 0 {
+		c.RAG.EmbeddingDimensions = 2048
+	}
+	if c.RAG.ChunkSize == 0 {
+		c.RAG.ChunkSize = 800
+	}
+	if c.RAG.ChunkOverlap == 0 {
+		c.RAG.ChunkOverlap = 100
+	}
+	if c.RAG.TopK == 0 {
+		c.RAG.TopK = 5
+	}
+	if c.RAG.ChatMaxTokens == 0 {
+		c.RAG.ChatMaxTokens = 2048
+	}
+	if c.RAG.ScoreThreshold == 0 {
+		c.RAG.ScoreThreshold = 0.3
 	}
 }
