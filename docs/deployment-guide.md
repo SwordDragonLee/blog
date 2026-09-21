@@ -197,11 +197,56 @@ ssh root@<IP> 'cd /opt/blog && docker compose -f compose.prod.yml restart nginx'
 ```
 
   Qdrant 向量可随时由发布动作重建（发布→索引幂等），不强制备份；要备份则打包 `qdrant-data` 卷。
-- **更新发版**：本机重新 build → save/scp/load → `docker compose -f compose.prod.yml up -d`（只重建变更的服务）
+- **更新发版**：日常走第十节 CI/CD（git push 即发版）；手工备用路径：本机重新 build → save/scp/load → `docker compose -f compose.prod.yml up -d`（只重建变更的服务）
 - **监控（可选加分项）**：server 已暴露 `GET /metrics`（Prometheus 格式，含 MQ 指标）——接一套 Prometheus + Grafana 即可看到任务吞吐与 HTTP 状态；公网暴露需加白名单或反代鉴权
 - **回滚**：保留上一版镜像 tag，出问题改 compose 里 tag 后 `up -d` 即回滚
 
-## 十、节奏与分工
+## 十、CI/CD 发版（GitHub Actions + 腾讯云 TCR 个人版）
+
+第五节的 save/scp/load 适合首次部署；之后的日常发版走 CI/CD：`git push main` 即自动构建受影响的镜像 → 推腾讯云 TCR 个人版（免费，大陆服务器拉取快且稳）→ SSH 远程执行 `pull + up -d`。服务器只做拉取，2C4G 不参与构建；首次部署仍按第五节手工初始化。
+
+工作流见 `.github/workflows/deploy.yml`：按改动路径过滤（改 server/ 只建 server 镜像，全程约 5~10 分钟）；只改 nginx conf 或 compose 时不建镜像，仅远程重启生效；构建失败不会发版。
+
+### 一次性配置（先于首次 CI 发版）
+
+1. **开通 TCR 个人版**（免费）：控制台「容器镜像服务 → 个人版」→ 设置登录密码 → 建命名空间 → 在命名空间下新建 3 个**私有**仓库：`blog-server`、`blog-blog`、`blog-admin`。记下 registry 地址（形如 `registry.cn-guangzhou.tencentcloudcr.com`，选与 ECS 同地域）。
+2. **部署专用 SSH 密钥**（本机生成，不复用日常私钥）：
+
+```bash
+ssh-keygen -t ed25519 -f blog_deploy_key -N "" -C "blog-deploy"
+# 公钥追加到服务器 /root/.ssh/authorized_keys；私钥全文填 GitHub Secret 的 SSH_KEY
+```
+
+3. **GitHub 仓库** Settings → Secrets and variables → Actions：
+   - Variables（非私密）：`REGISTRY=<registry 地址>`、`NAMESPACE=<命名空间>`
+   - Secrets：`TCR_USERNAME=<腾讯云账号 ID>`、`TCR_PASSWORD=<开通 TCR 时设置的密码>`、`SSH_HOST=<服务器 IP>`、`SSH_USER=root`、`SSH_KEY=<私钥全文>`
+4. **服务器**（一次性）：
+
+```bash
+# 腾讯内网镜像加速：拉 mysql/redis 等官方镜像免出国（写入后重启 docker 生效）
+cat > /etc/docker/daemon.json <<'EOF'
+{ "registry-mirrors": ["https://mirror.ccs.tencentyun.com"] }
+EOF
+systemctl restart docker
+
+docker login <REGISTRY>   # 用户名 = 腾讯云账号 ID，密码 = 开通 TCR 时设置的密码
+
+# /opt/blog/.env 追加三行，切换到 TCR 拉取（说明见 env.production.example 末尾）：
+#   SERVER_IMAGE=<REGISTRY>/<命名空间>/blog-server:latest
+#   BLOG_IMAGE=<REGISTRY>/<命名空间>/blog-blog:latest
+#   ADMIN_IMAGE=<REGISTRY>/<命名空间>/blog-admin:latest
+docker compose -f compose.prod.yml pull server blog admin   # 验证三个镜像能拉取
+```
+
+5. 首次验证：GitHub 仓库 Actions 页手动 workflow_dispatch 跑一次，确认构建/部署两个 job 全绿。
+
+### 日常发版与回滚
+
+- **发版**：`git push main`。构建在 GitHub 的机器上做，不占本地也不占服务器。
+- **回滚**：每个镜像都额外打了 git 短 SHA tag；出问题把 .env 里对应行的 `:latest` 换成旧 SHA 再 `up -d`，修复后改回 `:latest` 追平。
+- **nginx conf 变更**：deploy 步骤每次都会 `restart nginx`，conf 提交推送即生效，无需登服务器。
+
+## 十一、节奏与分工
 
 | 谁 | 事项 |
 |---|---|
