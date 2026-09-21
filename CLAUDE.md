@@ -17,6 +17,7 @@ AI 博客生成平台：后端调用 LLM 分析公开 Git 仓库 → 生成 4 �
 
 ```bash
 # 依赖服务（MySQL :3309、Redis :6380、RabbitMQ :5672，管理界面 :15672）
+# 密码在 deploy/.env（自建、已被 gitignore 忽略；缺失时 compose 会报错提示）
 cd deploy && docker compose up -d
 
 # 一键启动三端（后端 air 热更新 + admin + blog），或单独启动
