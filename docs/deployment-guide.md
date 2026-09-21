@@ -238,7 +238,7 @@ docker login <REGISTRY>   # 用户名 = 腾讯云账号 ID，密码 = 开通 TCR
 docker compose -f compose.prod.yml pull server blog admin   # 验证三个镜像能拉取
 ```
 
-5. 首次验证：GitHub 仓库 Actions 页手动 workflow_dispatch 跑一次，确认构建/部署两个 job 全绿。
+5. 首次部署：GitHub 仓库 Actions 页 → deploy → Run workflow → **勾选 force_all**（跳过路径过滤，三个镜像全部构建推送）→ 确认构建/部署两个 job 全绿。之后的日常发版不需要勾。
 
 ### 日常发版与回滚
 

@@ -11,7 +11,13 @@ name: deploy
 on:
   push:
     branches: [main]
-  workflow_dispatch: # 手动触发：首次配好 Secrets 后先手跑一次验证
+  workflow_dispatch:
+    inputs:
+      # 首次部署 / 需要全量重推时勾选：跳过路径过滤，三个镜像全部构建
+      force_all:
+        description: '强制构建全部三端镜像（跳过路径过滤）'
+        type: boolean
+        default: false
 
 # 部署不并发：上一次没跑完时新的排队等待，避免服务器上 pull/up 互相踩
 concurrency:
@@ -57,7 +63,7 @@ jobs:
   build-push:
     name: 构建并推送镜像
     needs: changes
-    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.blog == 'true' || needs.changes.outputs.admin == 'true'
+    if: inputs.force_all == true || needs.changes.outputs.server == 'true' || needs.changes.outputs.blog == 'true' || needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +81,7 @@ jobs:
 
       # 境外 runner 走官方源（Dockerfile 里的国内镜像源默认值只适合国内环境，故显式覆盖）
       - name: 构建 server
-        if: needs.changes.outputs.server == 'true'
+        if: inputs.force_all == true || needs.changes.outputs.server == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./server
@@ -87,7 +93,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/blog-server:${{ steps.tag.outputs.short }}
 
       - name: 构建 blog
-        if: needs.changes.outputs.blog == 'true'
+        if: inputs.force_all == true || needs.changes.outputs.blog == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./web/blog
@@ -99,7 +105,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/blog-blog:${{ steps.tag.outputs.short }}
 
       - name: 构建 admin
-        if: needs.changes.outputs.admin == 'true'
+        if: inputs.force_all == true || needs.changes.outputs.admin == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./web/admin
