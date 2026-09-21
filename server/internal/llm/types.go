@@ -33,6 +33,19 @@ type chatResponse struct {
 	} `json:"error"`
 }
 
+// anthropicResponse 是 Anthropic Messages 协议的响应体，
+// content 为分块数组，仅拼接 type=text 的文本块（忽略 thinking 等块）。
+type anthropicResponse struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+	Error *struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	} `json:"error"`
+}
+
 // FigureOut 是 LLM 写作时输出的单张配图描述。
 type FigureOut struct {
 	ID    string          `json:"id"`   // 正文占位符标识，如 fig-1

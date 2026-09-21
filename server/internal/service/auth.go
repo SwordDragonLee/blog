@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -86,6 +87,40 @@ func (s *AuthService) ParseToken(tokenString string) (*Claims, error) {
 	}
 	return claims, nil
 }
+
+// Profile 查询管理员个人信息（用户名 + 邮箱）。
+func (s *AuthService) Profile(ctx context.Context, userID uint) (*model.AdminUser, error) {
+	var u model.AdminUser
+	err := s.db.WithContext(ctx).First(&u, userID).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("%w: 管理员 %d 不存在", ErrNotFound, userID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("查询管理员: %w", err)
+	}
+	return &u, nil
+}
+
+// UpdateProfile 更新管理员资料，当前仅支持绑定/修改邮箱（trim + 基本格式校验）。
+func (s *AuthService) UpdateProfile(ctx context.Context, userID uint, email string) (*model.AdminUser, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email != "" && !mailRegex.MatchString(email) {
+		return nil, fmt.Errorf("%w: 邮箱格式不正确", ErrInvalid)
+	}
+	res := s.db.WithContext(ctx).Model(&model.AdminUser{}).
+		Where("id = ?", userID).
+		Update("email", email)
+	if res.Error != nil {
+		return nil, fmt.Errorf("更新管理员邮箱: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return nil, fmt.Errorf("%w: 管理员 %d 不存在", ErrNotFound, userID)
+	}
+	return s.Profile(ctx, userID)
+}
+
+// mailRegex 宽松的邮箱格式校验。
+var mailRegex = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 
 // sign 为管理员签发 HS256 JWT，时效取 cfg.Auth.TokenHours。
 func (s *AuthService) sign(user model.AdminUser) (string, error) {

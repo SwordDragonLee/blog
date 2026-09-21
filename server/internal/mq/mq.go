@@ -83,6 +83,7 @@ func (m *MQ) Connect(ctx context.Context) (*amqp091.Connection, error) {
 	if err != nil {
 		return nil, fmt.Errorf("连接 RabbitMQ: %w", err)
 	}
+	metricConnectTotal.Inc()
 	ch, err := conn.Channel()
 	if err == nil {
 		err = DeclareTopology(ch)

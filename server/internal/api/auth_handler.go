@@ -1,6 +1,8 @@
 package api
 
 import (
+	"blog/server/internal/httputil"
+	"blog/server/internal/resp"
 	"blog/server/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -17,15 +19,15 @@ func NewAuthHandler(svc *service.AuthService) *AuthHandler { return &AuthHandler
 // Login POST /auth/login：校验账号密码，返回 {token, user}。
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req loginRequest
-	if !bindJSON(c, &req) {
+	if !httputil.BindJSON(c, &req) {
 		return
 	}
 	token, user, err := h.svc.Login(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
-		failWith(c, err)
+		resp.FailWith(c, err)
 		return
 	}
-	ok(c, gin.H{"token": token, "user": user})
+	resp.OK(c, gin.H{"token": token, "user": user})
 }
 
 type loginRequest struct {

@@ -19,16 +19,20 @@ func NewPublisher(mq *MQ) *Publisher {
 func (p *Publisher) PublishTask(ctx context.Context, taskID uint) error {
 	body, err := marshalTask(taskID)
 	if err != nil {
+		metricPublishTotal.WithLabelValues("error").Inc()
 		return fmt.Errorf("序列化任务消息: %w", err)
 	}
 	ch, err := p.mq.Channel(ctx)
 	if err != nil {
+		metricPublishTotal.WithLabelValues("error").Inc()
 		return err
 	}
 	defer func() { _ = ch.Close() }()
 	if err := ch.PublishWithContext(ctx, ExchangeTasks, RoutingKey, false, false,
 		publishing(body, nil)); err != nil {
+		metricPublishTotal.WithLabelValues("error").Inc()
 		return fmt.Errorf("投递任务 %d 消息: %w", taskID, err)
 	}
+	metricPublishTotal.WithLabelValues("ok").Inc()
 	return nil
 }

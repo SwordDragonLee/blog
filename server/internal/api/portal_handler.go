@@ -5,12 +5,14 @@ import (
 	"strconv"
 	"strings"
 
+	"blog/server/internal/httputil"
+	"blog/server/internal/resp"
 	"blog/server/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-// PortalHandler 前台只读接口。
+// PortalHandler 前台接口：只读查询 + 文章点赞。
 type PortalHandler struct {
 	svc *service.PortalService
 }
@@ -20,23 +22,34 @@ func NewPortalHandler(svc *service.PortalService) *PortalHandler { return &Porta
 
 // ListArticles GET /portal/articles?page=&page_size=&tag=：已发布文章分页列表。
 func (h *PortalHandler) ListArticles(c *gin.Context) {
-	page, pageSize := pageParams(c)
+	page, pageSize := httputil.PageParams(c)
 	pd, err := h.svc.ListArticles(c.Request.Context(), page, pageSize, c.Query("tag"))
 	if err != nil {
-		failWith(c, err)
+		resp.FailWith(c, err)
 		return
 	}
-	ok(c, pd)
+	resp.OK(c, pd)
 }
 
 // GetArticle GET /portal/articles/:slug：文章详情（Markdown + 封面/配图元数据）。
 func (h *PortalHandler) GetArticle(c *gin.Context) {
 	detail, err := h.svc.GetArticle(c.Request.Context(), c.Param("slug"))
 	if err != nil {
-		failWith(c, err)
+		resp.FailWith(c, err)
 		return
 	}
-	ok(c, detail)
+	resp.OK(c, detail)
+}
+
+// LikeArticle POST /portal/articles/:slug/like：点赞，按客户端 IP 去重；
+// 重复点赞不报错，返回当前计数并置 duplicated=true。
+func (h *PortalHandler) LikeArticle(c *gin.Context) {
+	result, err := h.svc.LikeArticle(c.Request.Context(), c.Param("slug"), c.ClientIP())
+	if err != nil {
+		resp.FailWith(c, err)
+		return
+	}
+	resp.OK(c, result)
 }
 
 // Figure GET /portal/figures/:file：SVG 配图输出。
@@ -44,12 +57,12 @@ func (h *PortalHandler) GetArticle(c *gin.Context) {
 func (h *PortalHandler) Figure(c *gin.Context) {
 	id, okID := figureFileID(c.Param("file"))
 	if !okID {
-		fail(c, http.StatusBadRequest, "非法配图 id")
+		resp.Fail(c, http.StatusBadRequest, "非法配图 id")
 		return
 	}
 	asset, err := h.svc.GetFigure(c.Request.Context(), id)
 	if err != nil {
-		failWith(c, err)
+		resp.FailWith(c, err)
 		return
 	}
 	c.Header("Cache-Control", "public, max-age=300")

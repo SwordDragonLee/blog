@@ -1,5 +1,9 @@
-// Package llm 实现 OpenAI 兼容的 Chat 客户端：JSON 结构化输出校验、
+// Package llm 实现 LLM Chat 客户端：JSON 结构化输出校验、
 // 失败自动重试（指数退避）与基于 Redis 的简易限流。
+//
+// "OpenAI 兼容" 指一套请求/响应的 JSON 格式，而非 OpenAI 公司的服务——
+// 智谱、DeepSeek、SiliconFlow 等厂商都按这套格式开放端点，换厂商只需换 base_url。
+// base_url 含 "/anthropic" 时切换到 Anthropic Messages 格式（见 client_anthropic.go）。
 package llm
 
 import (
@@ -23,7 +27,8 @@ const (
 	maxOutputAttempts = 3 // JSON 校验失败重试次数
 )
 
-// Client 是 OpenAI 兼容服务客户端。
+// Client 是 LLM 服务客户端，支持 OpenAI 兼容与 Anthropic Messages 两种请求格式，
+// 由 cfg.BaseURL 自动判别；无论哪种格式，请求都发往同一个厂商端点（如智谱）。
 type Client struct {
 	cfg  config.LLM
 	http *http.Client
@@ -108,7 +113,11 @@ func (c *Client) chatWithRetry(ctx context.Context, messages []Message) (string,
 	return "", lastErr
 }
 
-func (c *Client) chatOnce(ctx context.Context, messages []Message) (string, error) {
+// chatOnceOpenAI 调用 OpenAI 兼容的 /chat/completions（默认协议）。
+// "调用大模型 API" 本质就是一个 HTTP 请求，四要素在此凑齐：
+// 地址 = base_url+/chat/completions；身份 = api_key 认证头；
+// 内容 = {model,messages} JSON；发送 = c.http.Do（请求真正上网络的时刻）。
+func (c *Client) chatOnceOpenAI(ctx context.Context, messages []Message) (string, error) {
 	reqBody := chatRequest{
 		Model:          c.cfg.Model,
 		Messages:       messages,
@@ -128,7 +137,7 @@ func (c *Client) chatOnce(ctx context.Context, messages []Message) (string, erro
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.cfg.APIKey)
 
-	resp, err := c.http.Do(req)
+	resp, err := c.http.Do(req) // 此前都是本地打包，这一行才真正发往厂商服务器
 	if err != nil {
 		return "", err
 	}

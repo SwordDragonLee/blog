@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"blog/server/internal/llm"
+	"blog/server/internal/mailer"
 	"blog/server/internal/model"
 	"blog/server/internal/svggen"
 
@@ -20,7 +21,7 @@ import (
 )
 
 // articleListColumns 列表查询字段（排除大字段 content_md）。
-const articleListColumns = "id, repo_analysis_id, title, slug, summary, word_count, tags, " +
+const articleListColumns = "id, repo_analysis_id, title, slug, summary, word_count, like_count, tags, " +
 	"status, sort_order, cover_asset_id, published_at, created_at, updated_at"
 
 // ArticleService 文章的查询、编辑、发版/下线与配图重生成。
@@ -30,11 +31,15 @@ type ArticleService struct {
 	llm    *llm.Client
 	log    *zap.Logger
 	portal *PortalService // 复用缓存失效逻辑
+	mailer *mailer.Mailer // 发布成功后的邮件通知
+	rag    *RagService    // RAG 技术问答：发布索引 / 下线删除（可为 nil）
 }
 
 // NewArticleService 创建文章服务。
-func NewArticleService(db *gorm.DB, rdb *redis.Client, client *llm.Client, log *zap.Logger) *ArticleService {
-	return &ArticleService{db: db, rdb: rdb, llm: client, log: log, portal: NewPortalService(db, rdb, log)}
+func NewArticleService(db *gorm.DB, rdb *redis.Client, client *llm.Client,
+	notify *mailer.Mailer, rag *RagService, log *zap.Logger) *ArticleService {
+	return &ArticleService{db: db, rdb: rdb, llm: client, log: log,
+		portal: NewPortalService(db, rdb, log), mailer: notify, rag: rag}
 }
 
 // FigureMeta 文章配图元数据（不含 SVG 原文）。
@@ -121,13 +126,18 @@ func (s *ArticleService) Update(ctx context.Context, id uint, title, summary, co
 	// 原先对外可见（已发布）时才需失效前台缓存
 	if wasPublished {
 		s.portal.InvalidateCache(ctx, art.Slug)
+		// 已发布文章被编辑退回草稿：内容将改变，向量即刻作废
+		if s.rag != nil {
+			s.rag.RemoveArticle(ctx, art.ID)
+		}
 	}
 	s.log.Info("文章已编辑", zap.Uint("article_id", id), zap.Bool("was_published", wasPublished))
 	return &art, nil
 }
 
-// Publish 发版：draft → published，写 published_at 并失效前台缓存。
-func (s *ArticleService) Publish(ctx context.Context, id uint) (*model.Article, error) {
+// Publish 发版：draft → published，写 published_at 并失效前台缓存；
+// 成功后异步邮件通知发布者（通知失败不影响发布结果）。
+func (s *ArticleService) Publish(ctx context.Context, id, publisherID uint) (*model.Article, error) {
 	var art model.Article
 	err := s.db.WithContext(ctx).First(&art, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -147,10 +157,31 @@ func (s *ArticleService) Publish(ctx context.Context, id uint) (*model.Article, 
 		return nil, fmt.Errorf("发布文章 %d: %w", id, err)
 	}
 	s.portal.InvalidateCache(ctx, art.Slug)
+	// 异步邮件通知发布者（mailer 内部处理长文章生成时的重复通知）...
+	if s.mailer != nil {
+		s.mailer.NotifyArticlePublished(publisherID, art.Title, art.Slug, now)
+	}
+	// 异步向量化入库，供 RAG 技术问答检索（失败仅记日志，不影响发布结果）
+	if s.rag != nil {
+		s.indexForRAG(ctx, art)
+	}
 	s.log.Info("文章已发版", zap.Uint("article_id", id), zap.String("slug", art.Slug))
 	art.Status = model.ArticleStatusPublished
 	art.PublishedAt = &now
 	return &art, nil
+}
+
+// indexForRAG 异步向量化入库：与请求上下文解耦（HTTP 返回后仍继续），
+// 限时 60s；失败仅记日志，不影响发布结果。传值拷贝避免与调用方后续字段赋值竞争。
+func (s *ArticleService) indexForRAG(ctx context.Context, art model.Article) {
+	go func() {
+		ictx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 60*time.Second)
+		defer cancel()
+		if err := s.rag.IndexArticle(ictx, &art); err != nil {
+			s.log.Warn("文章向量化入库失败（问答暂不可检索该文）",
+				zap.Uint("article_id", art.ID), zap.String("slug", art.Slug), zap.Error(err))
+		}
+	}()
 }
 
 // Offline 下线：published → draft，失效前台缓存。
@@ -170,6 +201,10 @@ func (s *ArticleService) Offline(ctx context.Context, id uint) (*model.Article, 
 		return nil, fmt.Errorf("下线文章 %d: %w", id, err)
 	}
 	s.portal.InvalidateCache(ctx, art.Slug)
+	// 下线即对外不可见：同步删除 RAG 向量，问答不再引用
+	if s.rag != nil {
+		s.rag.RemoveArticle(ctx, art.ID)
+	}
 	s.log.Info("文章已下线", zap.Uint("article_id", id), zap.String("slug", art.Slug))
 	art.Status = model.ArticleStatusDraft
 	return &art, nil

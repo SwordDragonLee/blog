@@ -21,6 +21,9 @@ func ProgressKey(taskID uint) string { return fmt.Sprintf("task:%d:progress", ta
 // LogsKey 任务执行日志的 Redis key（list，追加式，保留最近 maxLogEntries 条）。
 func LogsKey(taskID uint) string { return fmt.Sprintf("task:%d:logs", taskID) }
 
+// AttemptsKey 任务尝试次数的 Redis key（每次流水线 Handle 自增，手动重试时归零）。
+func AttemptsKey(taskID uint) string { return fmt.Sprintf("task:%d:attempts", taskID) }
+
 // progressReporter 把任务实时进度写 Redis，供管理平台轮询。
 // Redis 不可用时仅记录告警，不阻塞流水线。
 type progressReporter struct {
@@ -64,4 +67,11 @@ func (p *progressReporter) logf(format string, args ...any) {
 	}
 	_ = p.rdb.LTrim(ctx, key, -maxLogEntries, -1).Err()
 	_ = p.rdb.Expire(ctx, key, progressTTL).Err()
+}
+
+// AppendLog 供流水线外部（MQ 消费者的重投/死信路径）向任务日志追加一行，
+// 格式与 progressReporter.logf 完全一致；rdb 为 nil 时静默跳过。
+func AppendLog(rdb *redis.Client, taskID uint, format string, args ...any) {
+	p := &progressReporter{rdb: rdb, taskID: taskID}
+	p.logf(format, args...)
 }

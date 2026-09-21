@@ -1,5 +1,5 @@
 // Package task 实现生成任务流水线：克隆仓库 → 静态分析采样 → LLM 分析 →
-// 逐篇写作 → 渲染 SVG 配图 → 入库待审，实时进度写 Redis。
+// 逐篇写作 → 渲染 SVG 配图 → 文章落库（draft），实时进度写 Redis。
 // 由 MQ consumer 调用，pipeline 按 slug upsert / 按 article_id 重建配图，可安全重跑。
 package task
 
@@ -18,6 +18,7 @@ import (
 	"blog/server/internal/config"
 	"blog/server/internal/llm"
 	"blog/server/internal/model"
+	"blog/server/internal/mq"
 	"blog/server/internal/svggen"
 
 	"github.com/redis/go-redis/v9"
@@ -45,14 +46,35 @@ func New(cfg config.Config, db *gorm.DB, rdb *redis.Client, client *llm.Client, 
 func (p *Pipeline) Handle(ctx context.Context, taskID uint) error {
 	var t model.GenTask
 	if err := p.db.WithContext(ctx).First(&t, taskID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// 任务已删除：ack 丢弃消息，不重试
+			return fmt.Errorf("%w: 任务 %d 已删除", mq.ErrTaskCanceled, taskID)
+		}
 		return fmt.Errorf("查询任务 %d: %w", taskID, err)
+	}
+	if t.Status == model.TaskStatusCanceled {
+		// 任务在排队期间被取消：跳过执行
+		return fmt.Errorf("%w: 任务 %d", mq.ErrTaskCanceled, taskID)
 	}
 	if strings.TrimSpace(t.GitURL) == "" {
 		return fmt.Errorf("任务 %d 缺少 git_url", taskID)
 	}
 
 	prog := &progressReporter{rdb: p.rdb, taskID: taskID, log: p.log}
-	prog.step(1, "开始", "任务开始执行")
+	// 尝试计数：MQ 重投会再次进入 Handle，计数让管理端能分辨各次尝试
+	attempts := int64(1)
+	if p.rdb != nil {
+		actx, acancel := context.WithTimeout(context.Background(), writeTimeout)
+		if n, err := p.rdb.Incr(actx, AttemptsKey(taskID)).Result(); err == nil {
+			attempts = n
+		}
+		_ = p.rdb.Expire(actx, AttemptsKey(taskID), progressTTL).Err()
+		acancel()
+	}
+	if attempts > 1 {
+		prog.logf("══════ 第 %d 次尝试 ══════", attempts)
+	}
+	prog.step(1, "开始", fmt.Sprintf("任务开始执行（第 %d 次尝试）", attempts))
 	p.updateTask(ctx, taskID, map[string]any{
 		"status": model.TaskStatusRunning, "progress": 1, "step": "开始",
 		"message": "任务开始执行", "error": "",
@@ -61,7 +83,7 @@ func (p *Pipeline) Handle(ctx context.Context, taskID uint) error {
 	// ① 克隆仓库（5%）
 	prog.step(5, "克隆仓库", "开始克隆 "+t.GitURL)
 	info, err := analyzer.Clone(ctx, t.GitURL, p.cfg.Task.WorkDir,
-		time.Duration(p.cfg.Task.CloneTimeoutSeconds)*time.Second)
+		time.Duration(p.cfg.Task.CloneTimeoutSeconds)*time.Second, p.cfg.Task.Proxy)
 	if err != nil {
 		return p.fail(ctx, prog, taskID, fmt.Errorf("克隆仓库: %w", err))
 	}
@@ -132,8 +154,8 @@ func (p *Pipeline) Handle(ctx context.Context, taskID uint) error {
 		done++
 	}
 
-	// ⑥ 入库待审（100%）
-	prog.step(95, "入库待审", "文章已全部生成，等待审核")
+	// ⑥ 完成（100%）：文章均已落库为 draft。审核属于文章状态机（draft→published），
+	// 是任务结束之后的人工环节，不作为任务的一个阶段。
 	prog.step(100, "完成", fmt.Sprintf("生成完成，共 %d 篇文章待审核", done))
 	p.updateTask(ctx, taskID, map[string]any{
 		"status": model.TaskStatusSuccess, "progress": 100, "step": "完成",
@@ -155,6 +177,9 @@ func (p *Pipeline) analyzeRepo(ctx context.Context, digest string) (*llm.Analysi
 	return &out, err
 }
 
+// minArticleWords 单篇最低字数门槛，低于此值触发带反馈的重写（重写由 ChatJSON 的校验重试机制承担）。
+const minArticleWords = 1000
+
 // writeArticle 调用 LLM 第二轮写作，校验标题/正文/slug 与配图结构。
 func (p *Pipeline) writeArticle(ctx context.Context, repoName string, analysisJSON []byte, plan llm.ArticlePlanOut) (*llm.ArticleOut, error) {
 	system, user := llm.BuildArticlePrompt(repoName, string(analysisJSON), string(jsonify(plan)))
@@ -168,6 +193,12 @@ func (p *Pipeline) writeArticle(ctx context.Context, repoName string, analysisJS
 		}
 		if strings.TrimSpace(out.Markdown) == "" {
 			return errors.New("markdown 不能为空")
+		}
+		if wc := countWords(out.Markdown); wc < minArticleWords {
+			return fmt.Errorf("字数不足：仅 %d 字（要求不少于 %d 字），请充分展开正文，补充代码示例与原理讲解", wc, minArticleWords)
+		}
+		if len(out.Figures) == 0 {
+			return errors.New("至少需要 1 张配图，请按提纲安排 2-4 张配图并保证占位符一致")
 		}
 		seen := map[string]bool{}
 		for i, f := range out.Figures {
