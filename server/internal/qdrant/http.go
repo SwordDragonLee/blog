@@ -4,10 +4,29 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 )
+
+// HTTPError Qdrant 非 2xx 响应：携带状态码供调用方按语义分支（如 404 = 集合尚未创建）。
+type HTTPError struct {
+	Method string
+	Path   string
+	Code   int
+	Body   string // 已截断的响应体
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("Qdrant %s %s 返回 HTTP %d: %s", e.Method, e.Path, e.Code, e.Body)
+}
+
+// IsNotFound 判断 err（含包装链）是否为 Qdrant 404。典型场景：全新部署集合尚未创建。
+func IsNotFound(err error) bool {
+	var he *HTTPError
+	return errors.As(err, &he) && he.Code == http.StatusNotFound
+}
 
 // do 发起 REST 请求：序列化 body、校验 HTTP 状态、解析通用包装并返回 result 字段。
 func (c *Client) do(ctx context.Context, method, path string, body any) (json.RawMessage, error) {
@@ -16,7 +35,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 		return nil, err
 	}
 	if code != http.StatusOK {
-		return nil, fmt.Errorf("Qdrant %s %s 返回 HTTP %d: %s", method, path, code, truncate(rawBody))
+		return nil, &HTTPError{Method: method, Path: path, Code: code, Body: truncate(rawBody)}
 	}
 	var resp qdrantResponse
 	if err := json.Unmarshal(rawBody, &resp); err != nil {

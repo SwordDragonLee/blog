@@ -20,6 +20,10 @@ func (c *Client) RemoveArticle(ctx context.Context, articleID uint) error {
 	}
 	if _, err := c.do(ctx, http.MethodPost,
 		"/collections/"+c.collection+"/points/delete?wait=true", body); err != nil {
+		if IsNotFound(err) {
+			// 集合尚未创建：本来就没有向量，幂等成功（下线/退回草稿不因空栈报错）
+			return nil
+		}
 		return fmt.Errorf("删除文章 %d 向量: %w", articleID, err)
 	}
 	return nil

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 // SearchHit 检索命中：相似度得分 + payload 携带的块信息。
@@ -31,6 +33,11 @@ func (c *Client) Scroll(ctx context.Context) ([]ChunkPoint, error) {
 		}
 		rawRes, err := c.do(ctx, http.MethodPost, "/collections/"+c.collection+"/points/scroll", body)
 		if err != nil {
+			if IsNotFound(err) {
+				// 集合尚未创建（全新部署、还没有文章发布过）：按空索引返回
+				c.log.Info("Qdrant 集合不存在，滚动按空索引处理", zap.String("collection", c.collection))
+				return nil, nil
+			}
 			return nil, fmt.Errorf("滚动集合 %s: %w", c.collection, err)
 		}
 		var result struct {
@@ -71,6 +78,11 @@ func (c *Client) Search(ctx context.Context, vector []float32, topK int) ([]Sear
 	}
 	rawRes, err := c.do(ctx, http.MethodPost, "/collections/"+c.collection+"/points/search", body)
 	if err != nil {
+		if IsNotFound(err) {
+			// 集合尚未创建：按无命中处理，问答会走「没有相关内容」而非报错
+			c.log.Info("Qdrant 集合不存在，检索按无命中处理", zap.String("collection", c.collection))
+			return []SearchHit{}, nil
+		}
 		return nil, fmt.Errorf("向量检索: %w", err)
 	}
 	var result []struct {
