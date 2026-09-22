@@ -48,7 +48,7 @@ Docker 内网（compose 网络，端口一律不映射到公网）：
 | `docker/Dockerfile.server` | 多阶段：`golang:1.25-alpine` 构建（`CGO_ENABLED=0`）→ `alpine` 运行层（tzdata + ca-certificates）；**config.yaml 不打镜像**（`server/.dockerignore` 排除），运行时挂载 |
 | `docker/Dockerfile.blog` | Next.js standalone 产物镜像（`next.config.ts` 已加 `output: 'standalone'`）；启动 `PORT=3000 HOSTNAME=0.0.0.0 node server.js`。构建上下文仍是 `./web/blog` |
 | `docker/Dockerfile.admin` | 多阶段：`node:22-alpine` `npm ci && npm run build` → `nginx:1.27-alpine` 托管 `dist/`（SPA 回退 + `/api` 反代到 `server:8080`，conf 内嵌在 Dockerfile） |
-| `docker/compose.prod.yml` | 八服务编排（与本地 `deploy/docker-compose.yml` 的差异见 §4 对照表） |
+| `docker/compose.prod.yml` | 八服务编排（与根目录 `docker-compose.yml` 的差异见 §4 对照表） |
 | `docker/nginx/blog.conf` | `<域名>` server 块：反代 `blog:3000`；`/api` 反代 `server:8080`（SSE location 关缓冲）；443 段注释预留 |
 | `docker/nginx/admin.conf` | `admin.<域名>` server 块：整站转给 `admin:80`；443 段注释预留 |
 | `docker/nginx/default.conf` | 兜底块：IP 直连返回 444（覆盖镜像自带欢迎页） |
@@ -83,7 +83,7 @@ Docker 内网（compose 网络，端口一律不映射到公网）：
 
 ## 四、`compose.prod.yml` 与本地 compose 的差异对照
 
-| 差异点 | 本地 deploy/docker-compose.yml | 生产 compose.prod.yml |
+| 差异点 | 本地 docker-compose.yml（根目录） | 生产 compose.prod.yml |
 |---|---|---|
 | 端口映射 | MySQL 3309 / Redis 6380 映射宿主机（开发方便） | **全部不映射**（仅 nginx 的 80/443 映射） |
 | 服务数量 | 4 个中间件 | 8 个：四中间件 + server + blog + admin + nginx |

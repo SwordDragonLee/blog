@@ -9,7 +9,7 @@ AI 博客生成平台：后端调用 LLM 分析公开 Git 仓库 → 生成 4 �
 - `server/` — Go 后端（Gin + GORM + zap + viper + RabbitMQ + Redis），模块名 `blog/server`
 - `web/admin/` — 管理平台（Vite + React 18 + Antd 5 + MobX）
 - `web/blog/` — 前台博客（Next.js App Router + Tailwind 4）
-- `deploy/docker-compose.yml` — MySQL 8 + Redis 7 + RabbitMQ 3
+- `docker-compose.yml`（根目录）— 本地开发依赖：MySQL 8 + Redis 7 + RabbitMQ 3 + Qdrant
 
 设计与 API 全貌见 `docs/superpowers/specs/2026-09-14-ai-blog-platform-design.md`。
 
@@ -17,8 +17,8 @@ AI 博客生成平台：后端调用 LLM 分析公开 Git 仓库 → 生成 4 �
 
 ```bash
 # 依赖服务（MySQL :3309、Redis :6380、RabbitMQ :5672，管理界面 :15672）
-# 密码在 deploy/.env（自建、已被 gitignore 忽略；缺失时 compose 会报错提示）
-cd deploy && docker compose up -d
+# dev 密码写死在 compose 里（blogdev，仅限本机调试；server/.env 的连接密码须与其一致）
+docker compose up -d
 
 # 一键启动三端（后端 air 热更新 + admin + blog），或单独启动
 task              # = task server + task admin + task blog

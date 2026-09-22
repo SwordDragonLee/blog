@@ -1,5 +1,5 @@
 # 生产编排：nginx 统一入口 + server/blog/admin 三端 + 四中间件，共 8 个服务。
-# 与本地 deploy/docker-compose.yml 的关键差异：
+# 与本地根目录 docker-compose.yml 的关键差异：
 #   1. 中间件端口一律不映射宿主机（只有 nginx 的 80/443 对外）；RabbitMQ 管理界面绑回环走 SSH 隧道
 #   2. 全部服务 restart: unless-stopped + 日志限额，named volume 持久化（向量库数据必须落盘）
 #   3. 三端镜像不在服务器构建（2C4G）：本机 save/scp/load 上云，或 CI 推 TCR 后服务器 pull

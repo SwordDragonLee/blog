@@ -1,10 +1,12 @@
+# 本地开发依赖栈：密码直接写死（blogdev），仅限本机调试，禁止用于任何对外环境。
+# 生产编排是 docker/compose.prod.yml，密码走服务器 /opt/blog/.env（openssl 随机生成，绝不写死）。
 services:
   mysql:
     image: mysql:8.0
     container_name: blog-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 deploy/.env 中设置}
+      MYSQL_ROOT_PASSWORD: blogdev
       MYSQL_DATABASE: blog
       TZ: Asia/Shanghai
     ports:
@@ -24,7 +26,7 @@ services:
           "-h",
           "localhost",
           "-uroot",
-          "-p${MYSQL_ROOT_PASSWORD:?请在 deploy/.env 中设置}",
+          "-pblogdev",
         ]
       interval: 5s
       timeout: 3s
@@ -51,7 +53,7 @@ services:
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: blog
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?请在 deploy/.env 中设置}
+      RABBITMQ_DEFAULT_PASS: blogdev
     ports:
       - "5672:5672" # AMQP
       - "15672:15672" # 管理界面 http://localhost:15672
