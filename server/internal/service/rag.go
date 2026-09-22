@@ -156,8 +156,10 @@ func (s *RagService) Ask(ctx context.Context, question string, history []Turn, o
 		g.contents = append(g.contents, h.Content)
 	}
 
-	// 2. 无相关内容：不调 LLM，直接给固定话术（省 token 且不编造）
+	// 2. 无相关内容：不调 LLM，直接给固定话术（省 token 且不编造）；
+	//    问题顺手落库供选题回流——vecs[0] 是检索时已算好的向量，白拿不重算
 	if len(groups) == 0 {
+		s.CaptureUnanswered(ctx, question, vecs[0])
 		onDelta("暂未在博客文章中找到与该问题相关的内容，换个问法或浏览文章列表试试。")
 		return nil, nil
 	}

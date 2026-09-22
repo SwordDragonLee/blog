@@ -48,6 +48,7 @@ func Migrate(db *gorm.DB) error {
 		&model.RepoAnalysis{},
 		&model.Article{},
 		&model.SvgAsset{},
+		&model.AskUnanswered{},
 	)
 }
 

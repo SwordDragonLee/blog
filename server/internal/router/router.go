@@ -79,6 +79,8 @@ func New(d Deps) *gin.Engine {
 		// RAG 向量索引总览与检索测试（管理端，只读）
 		admin.GET("/rag/index", ragHandler.Index)
 		admin.GET("/rag/probe", ragHandler.Probe)
+		// 无命中问题列表：选题回流（管理端）
+		admin.GET("/rag/unanswered", ragHandler.ListUnanswered)
 	}
 
 	// 前台只读（公开）

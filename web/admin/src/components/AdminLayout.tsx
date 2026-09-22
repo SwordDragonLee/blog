@@ -4,6 +4,7 @@ import {
   DatabaseOutlined,
   DashboardOutlined,
   FileTextOutlined,
+  QuestionCircleOutlined,
   RocketOutlined,
   LogoutOutlined,
   MailOutlined,
@@ -21,6 +22,7 @@ const MENU_ITEMS = [
   { key: '/tasks', icon: <RocketOutlined />, label: '任务' },
   { key: '/articles', icon: <FileTextOutlined />, label: '文章管理' },
   { key: '/rag-index', icon: <DatabaseOutlined />, label: 'RAG 索引' },
+  { key: '/ask-unanswered', icon: <QuestionCircleOutlined />, label: '无命中问题' },
 ];
 
 export const AdminLayout = observer(function AdminLayout() {
@@ -55,7 +57,9 @@ export const AdminLayout = observer(function AdminLayout() {
       ? '/articles'
       : location.pathname.startsWith('/rag-index')
         ? '/rag-index'
-        : '/';
+        : location.pathname.startsWith('/ask-unanswered')
+          ? '/ask-unanswered'
+          : '/';
 
   const onLogout = () => {
     authStore.logout();

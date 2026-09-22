@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"blog/server/internal/httputil"
 	"blog/server/internal/resp"
 	"blog/server/internal/service"
 
@@ -133,6 +134,37 @@ func (h *RagHandler) Probe(c *gin.Context) {
 		return
 	}
 	resp.OK(c, hits)
+}
+
+// ListUnanswered GET /api/v1/rag/unanswered?keyword=&start=&end=：无命中问题列表（管理端，选题回流）。
+// keyword 模糊匹配问题原文与归一化键；start/end 为 YYYY-MM-DD，按最近提问时间过滤（含 end 当天），均可省略。
+func (h *RagHandler) ListUnanswered(c *gin.Context) {
+	page, pageSize := httputil.PageParams(c)
+	keyword := strings.TrimSpace(c.Query("keyword"))
+	var start, end *time.Time
+	if v := c.Query("start"); v != "" {
+		t, err := time.ParseInLocation("2006-01-02", v, time.Local)
+		if err != nil {
+			resp.Fail(c, http.StatusBadRequest, "start 需为 YYYY-MM-DD 日期")
+			return
+		}
+		start = &t
+	}
+	if v := c.Query("end"); v != "" {
+		t, err := time.ParseInLocation("2006-01-02", v, time.Local)
+		if err != nil {
+			resp.Fail(c, http.StatusBadRequest, "end 需为 YYYY-MM-DD 日期")
+			return
+		}
+		t = t.AddDate(0, 0, 1) // 含 end 当天：条件用 < end+24h
+		end = &t
+	}
+	pd, err := h.svc.ListUnanswered(c.Request.Context(), page, pageSize, keyword, start, end)
+	if err != nil {
+		resp.FailWith(c, err)
+		return
+	}
+	resp.OK(c, pd)
 }
 
 // rateLimiter 简单固定窗口限流：每 IP 每分钟不超过 limit 次（进程内，重启清零）。

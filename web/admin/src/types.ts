@@ -117,3 +117,13 @@ export interface RagProbeHit {
   snippet: string;
   pass: boolean;
 }
+
+// 问答无命中问题：选题回流（同一归一化键聚合，hits 为提问次数）
+export interface AskUnanswered {
+  id: number;
+  question: string;
+  normalized_key: string;
+  hits: number;
+  first_seen_at: string;
+  last_seen_at: string;
+}
