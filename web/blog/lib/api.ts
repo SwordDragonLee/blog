@@ -103,6 +103,28 @@ export async function getPortalArticle(slug: string): Promise<ArticleDetail | nu
   return request<ArticleDetail>(`/api/v1/portal/articles/${encodeURIComponent(slug)}`);
 }
 
+export interface RelatedArticle {
+  title: string;
+  slug: string;
+  summary?: string | null;
+  tags?: unknown;
+  published_at?: string | null;
+}
+
+/**
+ * 相关文章推荐：后端语义向量为主、同仓库/最新发布兜底，永不失败。
+ * 后端不可用/文章不存在时返回空数组，调用方据此隐藏区块。
+ */
+export async function getRelatedArticles(
+  slug: string,
+  limit = 4,
+): Promise<RelatedArticle[]> {
+  const data = await request<{ items: RelatedArticle[] }>(
+    `/api/v1/portal/articles/${encodeURIComponent(slug)}/related?limit=${limit}`,
+  );
+  return data?.items ?? [];
+}
+
 export interface LikeResult {
   like_count: number;
   duplicated: boolean;

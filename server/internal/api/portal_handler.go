@@ -41,6 +41,18 @@ func (h *PortalHandler) GetArticle(c *gin.Context) {
 	resp.OK(c, detail)
 }
 
+// RelatedArticles GET /portal/articles/:slug/related?limit=4：相关文章推荐。
+// 语义向量为主（RAG 发布索引复用）、同仓库/最新发布兜底；RAG 未启用自动纯规则。
+func (h *PortalHandler) RelatedArticles(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "4"))
+	items, err := h.svc.GetRelated(c.Request.Context(), c.Param("slug"), limit)
+	if err != nil {
+		resp.FailWith(c, err)
+		return
+	}
+	resp.OK(c, gin.H{"items": items})
+}
+
 // LikeArticle POST /portal/articles/:slug/like：点赞，按客户端 IP 去重；
 // 重复点赞不报错，返回当前计数并置 duplicated=true。
 func (h *PortalHandler) LikeArticle(c *gin.Context) {

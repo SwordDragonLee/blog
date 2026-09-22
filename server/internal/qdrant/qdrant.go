@@ -89,6 +89,34 @@ func (c *Client) collectionExists(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// GetPointVector 按确定性 ID 取文章首块（chunk_index=0）的存量向量，
+// 供相关文章推荐作查询向量；点不存在（文章未向量化过）返回 ok=false。
+// 走按 IDs 批量取点接口而非 GET 单点：缺失的点直接不出现在结果里，省去 404 分支。
+func (c *Client) GetPointVector(ctx context.Context, articleID uint) (vector []float32, ok bool, err error) {
+	body := map[string]any{
+		"ids":         []uint64{pointID(articleID, 0)},
+		"with_vector": true,
+	}
+	rawRes, err := c.do(ctx, http.MethodPost, "/collections/"+c.collection+"/points", body)
+	if err != nil {
+		if IsNotFound(err) {
+			// 集合尚未创建：等价于从未索引，按 ok=false 处理
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("取文章 %d 首块向量: %w", articleID, err)
+	}
+	var result []struct {
+		Vector []float32 `json:"vector"`
+	}
+	if err := json.Unmarshal(rawRes, &result); err != nil {
+		return nil, false, fmt.Errorf("解析点向量: %w", err)
+	}
+	if len(result) == 0 || len(result[0].Vector) == 0 {
+		return nil, false, nil
+	}
+	return result[0].Vector, true, nil
+}
+
 // UpsertChunks 批量写入（或覆盖）文章块向量，wait=true 确保返回即落盘。
 func (c *Client) UpsertChunks(ctx context.Context, points []ChunkPoint) error {
 	if len(points) == 0 {

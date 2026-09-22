@@ -9,6 +9,7 @@ import {
   formatDate,
   formatWordCount,
   getPortalArticle,
+  getRelatedArticles,
   inlineFigures,
   normalizeTags,
 } from "@/lib/api";
@@ -38,6 +39,8 @@ export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;
   const article = await getPortalArticle(slug);
   if (!article) notFound();
+  // 相关阅读：随详情页同一次 RSC 渲染取数，走 ISR 缓存；失败返回空数组即隐藏区块
+  const related = await getRelatedArticles(slug);
 
   // 先把 {{figure:xxx}} 占位符替换成图片，再交给 react-markdown 渲染
   const markdown = inlineFigures(article.content_md ?? "", article.figures ?? []);
@@ -124,6 +127,31 @@ export default async function ArticlePage({ params }: Props) {
         <LikeButton slug={article.slug} initialCount={article.like_count ?? 0} />
         <ShareButton />
       </div>
+
+      {/* 相关阅读：语义推荐优先，兜底保证栏目尽量不空；空列表不渲染 */}
+      {related.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-3 text-base font-bold text-slate-900">相关阅读</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {related.map((r) => (
+              <Link
+                key={r.slug}
+                href={`/article/${r.slug}`}
+                className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md"
+              >
+                <h3 className="line-clamp-2 font-medium text-slate-900 transition group-hover:text-blue-600">
+                  {r.title}
+                </h3>
+                {r.summary && (
+                  <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-slate-500">
+                    {r.summary}
+                  </p>
+                )}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-6 text-center">
         <Link

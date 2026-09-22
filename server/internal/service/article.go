@@ -39,7 +39,7 @@ type ArticleService struct {
 func NewArticleService(db *gorm.DB, rdb *redis.Client, client *llm.Client,
 	notify *mailer.Mailer, rag *RagService, log *zap.Logger) *ArticleService {
 	return &ArticleService{db: db, rdb: rdb, llm: client, log: log,
-		portal: NewPortalService(db, rdb, log), mailer: notify, rag: rag}
+		portal: NewPortalService(db, rdb, rag, log), mailer: notify, rag: rag}
 }
 
 // FigureMeta 文章配图元数据（不含 SVG 原文）。

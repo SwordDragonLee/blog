@@ -46,7 +46,7 @@ cd web/blog  && npm run build                 # next build
 
 分层：`router/`（路由装配）→ `api/`（HTTP handler，薄）→ `service/`（业务逻辑）→ `repo/`（GORM）+ `mq/`（RabbitMQ）+ `task/`（生成流水线）。响应封装在 `resp/`，通用中间件在 `middleware/`。
 
-路由两组（`internal/router/router.go`）：`/api/v1/auth/login` 公开；`/api/v1/tasks|articles/*` 走 JWT；`/api/v1/portal/*` 前台只读公开（文章列表/详情、`/portal/figures/:file.svg`）+ 唯一的前台写操作 `POST /portal/ask`（RAG 问答，SSE 流式，按 IP 限流）。
+路由两组（`internal/router/router.go`）：`/api/v1/auth/login` 公开；`/api/v1/tasks|articles/*` 走 JWT；`/api/v1/portal/*` 前台只读公开（文章列表/详情/相关推荐、`/portal/figures/:file.svg`）+ 唯一的前台写操作 `POST /portal/ask`（RAG 问答，SSE 流式，按 IP 限流）。
 
 ### 生成任务流水线（异步，RabbitMQ 驱动）
 

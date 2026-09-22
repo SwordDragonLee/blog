@@ -85,6 +85,7 @@ func New(d Deps) *gin.Engine {
 	{
 		v1.GET("/portal/articles", portalHandler.ListArticles)
 		v1.GET("/portal/articles/:slug", portalHandler.GetArticle)
+		v1.GET("/portal/articles/:slug/related", portalHandler.RelatedArticles)
 		v1.GET("/portal/figures/:file", portalHandler.Figure)
 		// 唯一的前台写操作：点赞（按 IP 去重）
 		v1.POST("/portal/articles/:slug/like", portalHandler.LikeArticle)

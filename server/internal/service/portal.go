@@ -18,9 +18,14 @@ import (
 const (
 	portalListKeyPrefix   = "portal:articles:list:" // + {page}:{tag}
 	portalArticleKeyPfx   = "portal:article:"       // + {slug}
+	portalRelatedKeyPfx   = "portal:related:"       // + {slug}
 	portalListKeyScanSize = 100
 	portalCacheTTL        = 60 * time.Second // 前台缓存 TTL 兜底
 	portalTagAll          = "all"            // 列表缓存 key 中「不筛选标签」的占位
+
+	portalRelatedTTL    = 10 * time.Minute // 推荐列表变化低频，缓存比详情久
+	relatedDefaultLimit = 4
+	relatedMaxLimit     = 10
 
 	likeDedupKeyPfx = "portal:like:"      // + {slug}:{ip}
 	likeDedupTTL    = 30 * 24 * time.Hour // 同一 IP 对同一文章的点赞去重窗口
@@ -28,14 +33,15 @@ const (
 
 // PortalService 前台只读查询：已发布文章列表/详情，结果走 Redis 缓存。
 type PortalService struct {
-	db  *gorm.DB
-	rdb *redis.Client
-	log *zap.Logger
+	db      *gorm.DB
+	rdb     *redis.Client
+	related *RagService // 相关文章推荐的语义检索来源（可为 nil，走纯规则兜底）
+	log     *zap.Logger
 }
 
-// NewPortalService 创建门户服务。
-func NewPortalService(db *gorm.DB, rdb *redis.Client, log *zap.Logger) *PortalService {
-	return &PortalService{db: db, rdb: rdb, log: log}
+// NewPortalService 创建门户服务。related 为语义推荐依赖（RagService），可传 nil。
+func NewPortalService(db *gorm.DB, rdb *redis.Client, related *RagService, log *zap.Logger) *PortalService {
+	return &PortalService{db: db, rdb: rdb, related: related, log: log}
 }
 
 // PortalListKey 前台文章列表缓存 key：portal:articles:list:{page}:{tag}。
@@ -222,7 +228,7 @@ func (s *PortalService) LikeArticle(ctx context.Context, slug, ip string) (*Port
 	return result, nil
 }
 
-// InvalidateCache 失效前台缓存：指定文章的详情 key + 全部列表 key。
+// InvalidateCache 失效前台缓存：指定文章的详情 key + 全部列表/相关推荐 key。
 // 删除失败仅告警，由 TTL 兜底，不阻塞调用方。
 func (s *PortalService) InvalidateCache(ctx context.Context, slugs ...string) {
 	if s.rdb == nil {
@@ -238,16 +244,20 @@ func (s *PortalService) InvalidateCache(ctx context.Context, slugs ...string) {
 		}
 	}
 	var cursor uint64
-	for {
-		batch, next, err := s.rdb.Scan(cctx, cursor, portalListKeyPrefix+"*", portalListKeyScanSize).Result()
-		if err != nil {
-			s.log.Warn("扫描前台列表缓存失败", zap.Error(err))
-			break
-		}
-		keys = append(keys, batch...)
-		cursor = next
-		if cursor == 0 {
-			break
+	// 列表与相关推荐都是「一篇变动全站失效」：发布/下线/编辑会改变任何页面的结果
+	for _, pattern := range []string{portalListKeyPrefix + "*", portalRelatedKeyPfx + "*"} {
+		cursor = 0
+		for {
+			batch, next, err := s.rdb.Scan(cctx, cursor, pattern, portalListKeyScanSize).Result()
+			if err != nil {
+				s.log.Warn("扫描前台缓存失败", zap.String("pattern", pattern), zap.Error(err))
+				break
+			}
+			keys = append(keys, batch...)
+			cursor = next
+			if cursor == 0 {
+				break
+			}
 		}
 	}
 	if len(keys) == 0 {

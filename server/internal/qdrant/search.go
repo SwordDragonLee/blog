@@ -107,3 +107,47 @@ func (c *Client) Search(ctx context.Context, vector []float32, topK int) ([]Sear
 	}
 	return hits, nil
 }
+
+// RelatedHit 相关文章检索命中：块所属文章 slug 与相似度得分（结果按得分降序）。
+type RelatedHit struct {
+	Slug  string
+	Score float32
+}
+
+// SearchExclude 以查询向量检索最相关的 topK 个块，但排除 excludeSlug 的块
+// （推荐场景里即当前文章自己）。标题/正文等展示字段不取，由调用方回数据库补齐。
+func (c *Client) SearchExclude(ctx context.Context, vector []float32, topK int, excludeSlug string) ([]RelatedHit, error) {
+	body := map[string]any{
+		"vector":       vector,
+		"limit":        topK,
+		"with_payload": []string{"slug"},
+		"filter": map[string]any{
+			"must_not": []any{
+				map[string]any{"key": "slug", "match": map[string]any{"value": excludeSlug}},
+			},
+		},
+	}
+	rawRes, err := c.do(ctx, http.MethodPost, "/collections/"+c.collection+"/points/search", body)
+	if err != nil {
+		if IsNotFound(err) {
+			// 集合尚未创建：按无命中处理，推荐由调用方规则兜底
+			c.log.Info("Qdrant 集合不存在，排除式检索按无命中处理", zap.String("collection", c.collection))
+			return []RelatedHit{}, nil
+		}
+		return nil, fmt.Errorf("排除式检索: %w", err)
+	}
+	var result []struct {
+		Score   float32 `json:"score"`
+		Payload struct {
+			Slug string `json:"slug"`
+		} `json:"payload"`
+	}
+	if err := json.Unmarshal(rawRes, &result); err != nil {
+		return nil, fmt.Errorf("解析排除式检索结果: %w", err)
+	}
+	hits := make([]RelatedHit, 0, len(result))
+	for _, h := range result {
+		hits = append(hits, RelatedHit{Slug: h.Payload.Slug, Score: h.Score})
+	}
+	return hits, nil
+}

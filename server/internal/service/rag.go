@@ -198,3 +198,51 @@ func (s *RagService) Ask(ctx context.Context, question string, history []Turn, o
 	}
 	return citations, nil
 }
+
+// RelatedCandidate 相关文章候选：文章 slug 与其最高块相似度。
+type RelatedCandidate struct {
+	Slug  string
+	Score float32
+}
+
+// RelatedArticles 语义相似文章检索：取本文首块（chunk_index=0）的存量向量作查询向量，
+// 全库检索最相似的块（排除本文），按文章聚合（同篇多块取首遇最高分，hits 本身按得分降序）。
+// 首块通常为文章开篇，最能代表全文主题；复用发布时入库的向量，读路径零 embedding 调用。
+// RAG 未启用 / 文章未索引 / 依赖故障一律返回 nil 并仅记日志——推荐是增强能力，
+// 由调用方降级为规则兜底，不作为错误上抛。
+func (s *RagService) RelatedArticles(ctx context.Context, articleID uint, excludeSlug string, limit int) []RelatedCandidate {
+	if !s.Enabled() {
+		return nil
+	}
+	// 取本文首块（chunk_index=0）的存量向量作查询向量，point ID = articleID*10000 确定性可推。
+	// ok=false 表示该点不存在（文章从未向量化，如 RAG 关闭期发布的历史文章）；
+	// err 是 Qdrant 网络/服务故障。两种情况都不上抛，返回 nil 由调用方走规则兜底。
+	vector, ok, err := s.store.GetPointVector(ctx, articleID)
+	if err != nil {
+		s.log.Warn("取文章首块向量失败，相关推荐降级",
+			zap.Uint("article_id", articleID), zap.Error(err))
+		return nil
+	}
+	if !ok {
+		return nil
+	}
+	hits, err := s.store.SearchExclude(ctx, vector, limit*3, excludeSlug)
+	if err != nil {
+		s.log.Warn("相关文章向量检索失败，推荐降级",
+			zap.Uint("article_id", articleID), zap.Error(err))
+		return nil
+	}
+	candidates := make([]RelatedCandidate, 0, limit)
+	seen := make(map[string]bool, len(hits)) // 文章去重
+	for _, h := range hits {
+		if h.Score < s.cfg.ScoreThreshold || seen[h.Slug] {
+			continue
+		}
+		seen[h.Slug] = true
+		candidates = append(candidates, RelatedCandidate{Slug: h.Slug, Score: h.Score})
+		if len(candidates) >= limit {
+			break
+		}
+	}
+	return candidates
+}

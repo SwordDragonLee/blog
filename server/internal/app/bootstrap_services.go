@@ -15,7 +15,7 @@ func (a *App) initServices(context.Context) error {
 	a.authSvc = service.NewAuthService(a.db, a.cfg.Auth, a.log)
 	a.taskSvc = service.NewTaskService(a.db, a.rdb, a.publisher, a.log)
 	a.articleSvc = service.NewArticleService(a.db, a.rdb, a.llmClient, mail, a.ragSvc, a.log)
-	a.portalSvc = service.NewPortalService(a.db, a.rdb, a.log)
+	a.portalSvc = service.NewPortalService(a.db, a.rdb, a.ragSvc, a.log)
 	// 运行中任务可被主动取消：service 层回调 consumer 的按任务取消
 	a.taskSvc.SetCancelFunc(a.consumer.CancelTask)
 	// 删除任务时同步清理文章在 Qdrant 的残留向量
