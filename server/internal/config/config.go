@@ -113,14 +113,26 @@ type RAG struct {
 	ScoreThreshold          float32 `mapstructure:"score_threshold"` // 相似度阈值，低于丢弃，缺省 0.3
 }
 
-// Load 读取指定路径的 yaml 配置。config.yaml 只放非私密配置；
-// 密钥/密码等私密项经环境变量注入（同名 key 点号换下划线，如 llm.api_key → LLM_API_KEY），
-// 来源优先级：进程环境变量 > 配置文件同目录的 .env（存在才加载，且不覆盖已有环境变量）。
+// Load 读取指定路径的 yaml 配置。config.yaml 只放非私密配置；密钥/密码等私密项经环境变量注入。
+//
+// .env 并非 viper 直接读取，而是两段接力：
+//  1. godotenv 把同目录 .env 的 KEY=VALUE 逐行塞进进程环境变量（文件不存在则静默跳过，
+//     如生产容器里没有该文件，由 compose 的 env_file 直接注入进程环境，效果等价）
+//  2. viper 查每个配置键时按「点号换下划线 + 全大写」变换出环境变量名去进程环境里找，
+//     命中则覆盖 yaml 值（如 llm.api_key → 查 LLM_API_KEY）
+//
+// 优先级：进程环境变量（含 compose 注入）> .env > config.yaml。
+// 注意：viper 的 Unmarshal 只遍历 yaml 中已声明的键——yaml 里的空占位（如 api_key: ""）
+// 是承重墙，删掉后对应的环境变量将无法映射进结构体，且全程不报错。
 func Load(path string) (*Config, error) {
+	// 先于 viper 读配置执行：.env 灌进进程环境，供下方 AutomaticEnv 命中；
+	// godotenv.Load 默认不覆盖已存在的环境变量，故外部注入优先于 .env 文件
 	_ = godotenv.Load(filepath.Join(filepath.Dir(path), ".env"))
 
 	v := viper.New()
 	v.SetConfigFile(path)
+	// 环境变量覆盖 yaml：「. → _」由 replacer 负责，大写由 AutomaticEnv 负责；
+	// 环境优先级高于配置文件，这是密钥不落 yaml 的实现基础
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	if err := v.ReadInConfig(); err != nil {
