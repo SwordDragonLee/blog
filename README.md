@@ -10,7 +10,7 @@ blog/
 ├── web/
 │   ├── blog/  # 前台（Next.js）
 │   └── admin/ # 管理平台（React + Antd + MobX）
-├── deploy/    # docker-compose（MySQL + Redis + RabbitMQ）
+├── docker-compose.yml # 本地依赖栈（MySQL + Redis + RabbitMQ + Qdrant）
 └── docs/      # 设计文档
 ```
 
@@ -18,15 +18,17 @@ blog/
 
 ### 1. 启动依赖服务
 
+仓库根目录执行：
+
 ```bash
-cd deploy
 docker compose up -d
 ```
 
 - MySQL: localhost:3309（root，库 blog；3306/3307 已被本机其他服务占用）
 - Redis: localhost:6380（本机 6379 已被占用）
-- RabbitMQ: localhost:5672（管理界面 http://localhost:15672）
-- 密码统一在 `deploy/.env`（参考 `MYSQL_ROOT_PASSWORD`、`RABBITMQ_DEFAULT_PASS`；首次启动前需自建该文件，已被 gitignore 忽略）
+- RabbitMQ: localhost:5672（可视化控制台 http://localhost:15672，账号 blog / blogdev）
+- Qdrant: localhost:6333（REST，RAG 向量库；内置可视化控制台 http://localhost:6333/dashboard，可浏览集合与调试检索）
+- dev 密码已写死在本文件同目录的 docker-compose.yml（blogdev，仅限本机调试），无需自建 .env；后端私密配置仍走 `server/.env`
 
 ### 2. 配置并启动后端
 

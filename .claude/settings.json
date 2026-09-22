@@ -61,11 +61,26 @@
       "Bash(ssh -i ~/.ssh/blog_deploy_key root@81.71.65.154 \"cd /opt/blog && docker compose -f compose.prod.yml restart server 2>&1 | tail -2 && sleep 8 && docker ps --filter name=blog-server --format '{{.Status}}'\")",
       "Bash(git mv *)",
       "Read(//d/agent/**)",
-      "Bash(rmdir deploy *)"
+      "Bash(rmdir deploy *)",
+      "Bash(gh run *)",
+      "Bash(curl -s -m 3 http://localhost:6333/collections)",
+      "Bash(curl -s http://localhost:6333/collections/blog_articles)",
+      "Bash(curl -s -X POST http://localhost:6333/collections/blog_articles/points/scroll -H 'Content-Type: application/json' -d '{\"limit\":2,\"with_payload\":[\"article_id\",\"chunk_index\",\"title\",\"slug\"]}')",
+      "Bash(curl -s \"http://localhost:6333/collections/blog_articles/points/40000?with_vector=true\")",
+      "Bash(curl -s -X POST http://localhost:6333/collections/blog_articles/points/scroll -H 'Content-Type: application/json' -d '{\"limit\":1,\"with_payload\":[\"article_id\",\"chunk_index\",\"title\"],\"with_vector\":true,\"filter\":{\"must\":[{\"key\":\"article_id\",\"match\":{\"value\":4}},{\"key\":\"chunk_index\",\"match\":{\"value\":0}}]}}')",
+      "Bash(cd d:/agent/blog/server && go vet ./... 2>&1 | head -20 && go build -o /tmp/server-test.exe ./cmd/server && echo BUILD_OK && rm -f /tmp/server-test.exe)",
+      "Bash(npx tsc *)",
+      "Bash(go run *)",
+      "Bash(curl -s \"http://localhost:8080/api/v1/portal/articles/langchain-engineering-practices/related?limit=4\")",
+      "Bash(curl -s -X POST http://localhost:6333/collections/blog_articles/points/count -H 'Content-Type: application/json' -d '{\"exact\":true}')",
+      "Bash(curl -s \"http://localhost:8080/api/v1/portal/articles/langchain-tech-stack-overview/related?limit=4\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8080/api/v1/portal/articles/no-such-slug/related\")",
+      "Bash(curl -s \"http://localhost:8080/api/v1/portal/articles/langchain-tech-stack-overview/related?limit=99\" -o /dev/null -w \"%{http_code}\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",
-      "C:\\Users\\86159\\Desktop\\学习"
+      "C:\\Users\\86159\\Desktop\\学习",
+      "\\tmp"
     ]
   }
 }
