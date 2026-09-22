@@ -24,7 +24,7 @@ llm:
   # 端点含 "/anthropic" 时自动切换 Anthropic Messages 协议（如智谱 Coding Plan）
   base_url: https://open.bigmodel.cn/api/anthropic
   api_key: "" # 私密项：由 .env 的 LLM_API_KEY 注入
-  model: glm-4.6 # Coding Plan 套餐模型，质量远高于免费的 glm-4.5-flash（免费档可改回）
+  model: glm-5.3 # Coding Plan 套餐模型（2026-08 起纳入套餐，定价与 5.2 持平）
   timeout_seconds: 600 # 免费模型生成慢，放宽单次调用超时
   temperature: 0.7
   max_tokens: 16384 # Anthropic 协议必传且思考已关闭，16K 保证长文不被截断
@@ -58,7 +58,7 @@ email:
   # from: "" # 发件人，缺省等于 username
   site_url: http://localhost:3000 # 前台博客地址，邮件里拼文章链接用
 
-# 向量数据库（RAG 技术问答）：deploy/docker-compose.yml 里的 qdrant 服务
+# 向量数据库（RAG 技术问答）：根目录 docker-compose.yml 里的 qdrant 服务
 qdrant:
   base_url: http://localhost:6333
   collection: blog_articles
