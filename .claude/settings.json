@@ -56,10 +56,16 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" -m 8 http://81.71.65.154:8081/)",
       "Bash(echo \"公网 8081: $\\(curl -s -o /dev/null -w \"%{http_code}\" -m 8 http://81.71.65.154:8081/ 2>&1 || echo 连接失败\\)\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" -m 8 http://81.71.65.154:8082/)",
-      "Bash(echo \"公网 8082: $\\(curl -s -o /dev/null -w \"%{http_code}\" -m 8 http://81.71.65.154:8082/ 2>&1 || echo 连接失败\\)\")"
+      "Bash(echo \"公网 8082: $\\(curl -s -o /dev/null -w \"%{http_code}\" -m 8 http://81.71.65.154:8082/ 2>&1 || echo 连接失败\\)\")",
+      "Bash(ssh -i ~/.ssh/blog_deploy_key root@81.71.65.154 \"grep -n 'model: glm' /opt/blog/config.yaml && sed -i 's/  model: glm-4.6.*/  model: glm-5.3 # Coding Plan 套餐模型（2026-08 起纳入套餐，定价与 5.2 持平）/' /opt/blog/config.yaml && echo '=== 替换后 ===' && grep -n 'model: glm' /opt/blog/config.yaml\")",
+      "Bash(ssh -i ~/.ssh/blog_deploy_key root@81.71.65.154 \"cd /opt/blog && docker compose -f compose.prod.yml restart server 2>&1 | tail -2 && sleep 8 && docker ps --filter name=blog-server --format '{{.Status}}'\")",
+      "Bash(git mv *)",
+      "Read(//d/agent/**)",
+      "Bash(rmdir deploy *)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\86159\\.ssh"
+      "C:\\Users\\86159\\.ssh",
+      "C:\\Users\\86159\\Desktop\\学习"
     ]
   }
 }
