@@ -91,7 +91,18 @@
       "Bash(curl -s -X POST \"http://localhost:6333/collections/blog_articles/points/scroll\" -H 'Content-Type: application/json' -d '{\"limit\":100,\"with_payload\":[\"slug\"],\"with_vector\":false}')",
       "Bash(curl -s -N --max-time 40 -X POST http://localhost:8080/api/v1/portal/ask -H 'Content-Type: application/json' -d '{\"question\":\"LangChain 的 shielded 装饰器是怎么防止回调被取消的\"}')",
       "Bash(awk '{print $6, $7}')",
-      "Bash(awk '{print \"rebuild:\", $6}')"
+      "Bash(awk '{print \"rebuild:\", $6}')",
+      "mcp__playwright__browser_navigate",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=\"d:\\\\\\\\agent\\\\\\\\blog\\\\\\\\docs\\\\\\\\CICD实现流程.pdf\" \"file:///d:/agent/blog/docs/CICD实现流程.html\")",
+      "Bash(python -m http.server 18765)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' \"http://localhost:18765/CICD%E5%AE%9E%E7%8E%B0%E6%B5%81%E7%A8%8B.html\")",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(awk '{print $NF}')",
+      "Bash(xargs -r taskkill //F //PID)",
+      "mcp__playwright__browser_close",
+      "Read(//c/Users/86159/Desktop/学习/**)",
+      "mcp__playwright__browser_evaluate",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=\"C:\\\\\\\\Users\\\\\\\\86159\\\\\\\\Desktop\\\\\\\\学习\\\\\\\\李剑龙简历.pdf\" \"file:///C:/Users/86159/Desktop/学习/李剑龙简历-2026.html\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",
