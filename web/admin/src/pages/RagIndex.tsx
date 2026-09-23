@@ -53,7 +53,7 @@ export function RagIndex() {
   const [loadErr, setLoadErr] = useState('');
   const [probing, setProbing] = useState(false);
   const [question, setQuestion] = useState('');
-  const [threshold, setThreshold] = useState(0.3);
+  const [threshold, setThreshold] = useState(0.5);
   const [hits, setHits] = useState<RagProbeHit[] | null>(null);
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export function RagIndex() {
                 max={1}
                 step={0.05}
                 value={threshold}
-                onChange={(v) => setThreshold(v ?? 0.3)}
+                onChange={(v) => setThreshold(v ?? 0.5)}
               />
             </Space.Compact>
           </Space>
