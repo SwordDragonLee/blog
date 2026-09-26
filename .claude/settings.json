@@ -121,7 +121,21 @@
       "Bash(awk '{print $5}')",
       "Bash(taskkill //F //PID 11444)",
       "Bash(curl -s http://localhost:6333/collections/blog_articles/points/30005)",
-      "Bash(curl -s -X POST http://localhost:6333/collections/blog_articles/points/scroll -H 'Content-Type: application/json' -d '{\"filter\":{\"must\":[{\"key\":\"article_id\",\"match\":{\"value\":3}}]},\"with_payload\":true,\"limit\":100}')"
+      "Bash(curl -s -X POST http://localhost:6333/collections/blog_articles/points/scroll -H 'Content-Type: application/json' -d '{\"filter\":{\"must\":[{\"key\":\"article_id\",\"match\":{\"value\":3}}]},\"with_payload\":true,\"limit\":100}')",
+      "Bash(curl -s -o /dev/null -w 'backend:%{http_code}\\\\n' http://localhost:8080/api/v1/portal/articles)",
+      "Bash(python -m json.tool --no-ensure-ascii)",
+      "Bash(go install *)",
+      "Bash(grep -rn \"AdminUser\" internal/model/*.go | head -3; ls \"$HOME/go/bin\" | grep -i swag)",
+      "Read(//c/Users/86159/go/**)",
+      "Bash(ls \"$\\(go env GOPATH\\)/bin\")",
+      "Bash(\"D:/Tools/gopath/bin/swag.exe\" init *)",
+      "Bash(curl -s -o /dev/null -w \"UI:%{http_code}\\\\n\" http://localhost:8080/swagger/index.html)",
+      "Bash(curl -s http://localhost:8080/swagger/doc.json)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('ask produces:', d['paths']['/portal/ask']['post'].get\\('produces'\\)\\); print\\('paths:', len\\(d['paths']\\)\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('live ask produces:', d['paths']['/portal/ask']['post'].get\\('produces'\\)\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('live ask produces:', d['paths']['/portal/ask']['post'].get\\('produces'\\)\\); print\\('live UI path count:', len\\(d['paths']\\)\\)\")",
+      "Bash(gofmt -l internal/ cmd/)",
+      "Bash(gofmt -d internal/mq/mq.go)"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",
