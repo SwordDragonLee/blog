@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AI 博客平台部署架构与请求链路</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    font-size: 10.5pt; line-height: 1.7; color: #1f2329; margin: 0;
+  }
+  h1 { font-size: 19pt; border-bottom: 3px solid #1f5eff; padding-bottom: 8px; margin: 0 0 4px; }
+  .meta { color: #6b7280; font-size: 9pt; margin-bottom: 18px; }
+  h2 { font-size: 13.5pt; margin: 26px 0 8px; padding-left: 10px; border-left: 4px solid #1f5eff; break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 16px 0 6px; break-after: avoid; }
+  p { margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 9.5pt; break-inside: avoid; }
+  th, td { border: 1px solid #d9dde3; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #f2f5f9; white-space: nowrap; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 8.8pt; background: #f4f6f8; padding: 1px 4px; border-radius: 3px; }
+  pre { background: #f6f8fa; border: 1px solid #e3e6ea; border-radius: 6px; padding: 10px 12px; overflow-x: auto; break-inside: avoid; }
+  pre code { background: none; padding: 0; font-size: 8.6pt; line-height: 1.55; }
+  .callout { border-left: 4px solid #1677ff; background: #f0f7ff; padding: 8px 12px; margin: 10px 0; border-radius: 0 6px 6px 0; font-size: 9.8pt; break-inside: avoid; }
+  .callout.warn { border-color: #d48806; background: #fffbe6; }
+  figure { margin: 12px 0; break-inside: avoid; }
+  figcaption { text-align: center; color: #6b7280; font-size: 9pt; margin-top: 4px; }
+  ul, ol { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  .tag { display: inline-block; background: #eaf1ff; color: #1f5eff; border-radius: 3px; padding: 0 6px; font-size: 8.8pt; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<h1>AI 博客平台部署架构与请求链路</h1>
+<div class="meta">基于仓库实现整理 · 编排：<code>docker/compose.prod.yml</code> · 入口配置：<code>docker/nginx/*.conf</code> · 2026-09-23</div>
+
+<h2>一、总览：一台服务器跑了什么</h2>
+<p>腾讯云 ECS（81.71.65.154，2C4G）上用 docker compose 跑 8 个服务。容器之间通过 compose 内置 DNS 按<b>服务名</b>互访；对公网只开放入口 nginx 的端口，其余容器一律不发布。</p>
+<table>
+  <tr><th>服务名</th><th>容器名</th><th>角色</th><th>容器内监听</th><th>发布到公网</th></tr>
+  <tr><td><code>nginx</code></td><td>blog-nginx</td><td>统一入口（反向代理）</td><td>80 / 443 / 8081 / 8082</td><td>80、443、8081、8082</td></tr>
+  <tr><td><code>blog</code></td><td>blog-blog</td><td>前台博客（Next.js standalone）</td><td>3000</td><td>不发布</td></tr>
+  <tr><td><code>server</code></td><td>blog-server</td><td>Go 后端（API + Worker）</td><td>8080</td><td>不发布</td></tr>
+  <tr><td><code>admin</code></td><td>blog-admin</td><td>管理端（nginx:alpine 托管静态）</td><td>80</td><td>不发布</td></tr>
+  <tr><td><code>mysql</code> / <code>redis</code> / <code>rabbitmq</code> / <code>qdrant</code></td><td>blog-*</td><td>中间件 ×4</td><td>3306 / 6379 / 5672 / 6333</td><td>不发布（rabbitmq 管理界面仅绑回环，走 SSH 隧道）</td></tr>
+</table>
+<div class="callout">核心心智模型：<b>compose 的 <code>ports:</code> 管"大门开不开"（宿主机发布），容器内监听哪个端口是各镜像自己的事。</b>容器之间互访永远走内部端口，与宿主机映射无关。</div>
+
+<h2>二、两层 nginx 与三份 conf 文件</h2>
+<p>整个系统有<b>两层 nginx</b>，职责不同：</p>
+<table>
+  <tr><th>层</th><th>配置在哪</th><th>职责</th></tr>
+  <tr><td><b>入口层</b>（blog-nginx 容器）</td><td><code>docker/nginx/blog.conf</code>、<code>admin.conf</code>、<code>default.conf</code>，按文件名挂载进 <code>conf.d/</code></td><td>公网大门：按域名/端口选 server 块、按路径选 location、SSE 专项配置、444 兜底</td></tr>
+  <tr><td><b>容器内层</b>（仅 admin 镜像自带）</td><td><code>docker/Dockerfile.admin</code> 构建时写入容器 conf.d</td><td>SPA 路由回退、带哈希静态资源长缓存、容器内 <code>/api</code> 反代到 server:8080</td></tr>
+</table>
+<p>注意同名陷阱：<code>docker/nginx/admin.conf</code>（入口层）与 Dockerfile.admin 里写进容器的 <code>admin.conf</code>（容器内层）<b>同名不同物</b>。blog 容器没有内层 nginx——Next.js standalone 直接跑 node。</p>
+<p>入口层拆三份文件的理由：nginx 按 conf.d 文件加载，<b>一个文件一个 server 块、一个职责</b>，增删子域互不影响，compose 挂载与 CI 同步都按文件粒度走。</p>
+<table>
+  <tr><th>文件</th><th>管什么</th><th>要点</th></tr>
+  <tr><td><code>blog.conf</code></td><td>前台博客 ljl0628.cn / www（+ 备案期 8081 预览块）</td><td>唯一按路径分流的块：<code>/</code> → blog:3000，<code>/api</code> → server:8080，问答接口有 SSE 专线</td></tr>
+  <tr><td><code>admin.conf</code></td><td>管理端 admin.ljl0628.cn（+ 备案期 8082 预览块）</td><td>整站一把转给 admin:80，路径分流交给容器内层</td></tr>
+  <tr><td><code>default.conf</code></td><td>兜底：IP 直连 / 陌生域名</td><td><code>return 444</code> 直接断开。没有它，未知 Host 会落到字母序第一个块（admin），裸 IP 就能打开管理端登录页</td></tr>
+</table>
+
+<h2>三、域名、DNS 与备案期预览</h2>
+<p><code>admin.ljl0628.cn</code> 是<b>子域名</b>：注册了主域名即拥有其全部子域名，无需另外申请，只需在 DNS 解析里加 A 记录。备案针对主域名，子域名随主域名，不单独备案。备案通过后计划加三条记录，全部指向同一台服务器：</p>
+<table>
+  <tr><th>主机记录</th><th>记录值</th><th>作用</th></tr>
+  <tr><td>@</td><td rowspan="3">81.71.65.154</td><td>ljl0628.cn → 博客</td></tr>
+  <tr><td>www</td><td>www.ljl0628.cn → 博客</td></tr>
+  <tr><td>admin</td><td>admin.ljl0628.cn → 管理端</td></tr>
+</table>
+<p><b>浏览器默认端口</b>：<code>http://</code> 默认 80、<code>https://</code> 默认 443，地址栏隐藏默认端口；写了端口（如 <code>:8081</code>）则用写的。备案期间没有域名解析，用 <code>IP:端口</code> 直接访问预览站（8081 = 博客、8082 = 管理端），备案通过后随预览块一起删除。</p>
+<div class="callout">DNS 与 nginx 的分工：<b>DNS 负责把所有域名送到服务器门口，nginx 的 <code>server_name</code> 负责在门口按域名分流。</b></div>
+
+<h2>四、nginx 怎么选 server 块：先端口，后 Host</h2>
+<p>conf.d 里多个 server 块并存，nginx 两步选出处理请求的块：</p>
+<table>
+  <tr><th>步骤</th><th>依据</th><th>规则</th></tr>
+  <tr><td>① 按端口筛</td><td>请求连的端口</td><td>只在<b>监听该端口</b>的 server 块里挑，其他块不参与</td></tr>
+  <tr><td>② 按 Host 挑</td><td>请求头 <code>Host</code></td><td>与各块 <code>server_name</code> 精确匹配；都不匹配 → 该端口的 <code>default_server</code>（或该端口读入的第一个块）</td></tr>
+</table>
+<p>拿当前配置套用：</p>
+<table>
+  <tr><th>访问</th><td>① 端口</td><td>② Host</td><td>结果</td></tr>
+  <tr><td><code>ljl0628.cn/xxx</code></td><td>80（三块候选）</td><td>匹配 blog 主块</td><td>博客主块处理</td></tr>
+  <tr><td><code>admin.ljl0628.cn</code></td><td>80</td><td>匹配 admin 块</td><td>管理端块处理</td></tr>
+  <tr><td><code>81.71.65.154</code>（IP 直连）</td><td>80</td><td>是 IP，全不匹配</td><td>default.conf → 444 断开</td></tr>
+  <tr><td><code>81.71.65.154:8081</code></td><td><b>8081（唯一监听块）</b></td><td>走不到这步</td><td>博客预览块必进</td></tr>
+</table>
+<div class="callout">预览块<b>不写 server_name</b>：备案期用 IP:端口 访问，Host 是 IP，写什么域名都匹配不上；不写，它自动成为该端口的默认块，来者不拒。预览块与主块的隔离手段是<b>端口</b>，不是域名。</div>
+
+<h2>五、blog 主块怎么选 location：精确匹配优先，前缀取最长</h2>
+<pre><code>location = /api/v1/portal/ask { … }   # 精确匹配，优先级最高，SSE 专线
+location /api/               { … }    # 前缀匹配：其余 API
+location /                   { … }    # 前缀匹配兜底：页面与静态资源 → Next.js</code></pre>
+<table>
+  <tr><th>请求路径</th><th>命中</th><th>上游</th></tr>
+  <tr><td><code>POST /api/v1/portal/ask</code></td><td><code>= /api/v1/portal/ask</code></td><td>server:8080（SSE 专项配置）</td></tr>
+  <tr><td><code>/api/v1/articles</code>、<code>/portal/figures/x.svg</code> …</td><td><code>/api/</code></td><td>server:8080（60s 读超时）</td></tr>
+  <tr><td><code>/</code>、<code>/article/xxx</code>、<code>/_next/static/...</code></td><td><code>/</code></td><td>blog:3000</td></tr>
+</table>
+<p>SSE 专线多出的四行配置（2026-09-23 生产 8081 预览不流式的根因就是漏了这段）：</p>
+<table>
+  <tr><th>配置</th><th>作用</th></tr>
+  <tr><td><code>proxy_buffering off</code></td><td><b>关键</b>：nginx 默认把上游响应攒进缓冲区再大块吐出，SSE 的逐字小包会被攒成一坨，前端憋到结束才见字</td></tr>
+  <tr><td><code>proxy_cache off</code></td><td>流式响应不进缓存</td></tr>
+  <tr><td><code>proxy_set_header Connection ""</code></td><td>对上游保持干净的 HTTP/1.1 长连接</td></tr>
+  <tr><td><code>proxy_read_timeout 300s</code></td><td>默认 60s 会掐断长回答中途的停顿，拉长到 300s</td></tr>
+</table>
+
+<h2>六、proxy_pass 的目标：服务名 + 容器内部端口</h2>
+<p><code>proxy_pass http://server:8080</code> 里的 <code>server</code> 是 compose 的<b>服务名</b>（<code>services:</code> 下的键），不是容器名（<code>blog-server</code>）。Docker 内置 DNS 两者都能解析，但约定一律写服务名——服务名是"逻辑角色"的稳定称呼，容器改名/重建不受影响。</p>
+<table>
+  <tr><th>写法</th><th>服务名</th><th>内部端口由谁决定</th></tr>
+  <tr><td><code>http://blog:3000</code></td><td>blog</td><td>Dockerfile.blog 的 <code>ENV PORT=3000 HOSTNAME=0.0.0.0</code>（Next 读它；<code>HOSTNAME=0.0.0.0</code> 不设会只绑 127.0.0.1，容器外连不进）</td></tr>
+  <tr><td><code>http://server:8080</code></td><td>server</td><td><code>config.yaml</code> 的 <code>server.port: 8080</code></td></tr>
+  <tr><td><code>http://admin:80</code></td><td>admin</td><td>镜像内层 nginx 的 <code>listen 80</code></td></tr>
+</table>
+<p>与端口相关的三个易混概念：</p>
+<table>
+  <tr><th>概念</th><th>在哪定义</th><th>作用</th></tr>
+  <tr><td>容器内监听端口</td><td>进程自身配置（ENV / config / 容器内 conf）</td><td>进程真正绑定的端口，内网邻居用"服务名:它"访问</td></tr>
+  <tr><td><code>EXPOSE 3000</code></td><td>Dockerfile</td><td><b>纯文档声明</b>，不开放/发布任何端口；删掉不影响连通性。只影响 <code>docker run -P</code> 和 <code>docker ps</code> 显示</td></tr>
+  <tr><td><code>ports: 8081:8081</code></td><td>compose</td><td>把容器端口发布到宿主机（大门）。宿主机口与内部口可以不同（如本地 dev 的 3309:3306）；不配 = 没有门</td></tr>
+</table>
+
+<h2>七、四条典型请求链路走查</h2>
+<h3>7.1 博客首页 <code>http://ljl0628.cn/</code></h3>
+<ol>
+  <li>浏览器查<b>公网 DNS</b>：ljl0628.cn → 81.71.65.154，默认补 :80 发起请求，请求头 <code>Host: ljl0628.cn</code></li>
+  <li>到达 blog-nginx 容器（compose 80:80 发布）；① 端口 80 → ② Host 命中 blog 主块</li>
+  <li>路径 <code>/</code> 命中 <code>location /</code> → <code>proxy_pass http://blog:3000</code></li>
+  <li>blog 容器内 Next.js（服务端取数走内网直连 server:8080）渲染返回，nginx 原样转回浏览器</li>
+</ol>
+<h3>7.2 RAG 问答 <code>POST /api/v1/portal/ask</code></h3>
+<ol>
+  <li>同上前两步进入 blog 主块；路径<b>精确匹配</b> SSE 专线 location</li>
+  <li><code>proxy_buffering off</code> 下，Go 后端每写一帧 SSE 就刷出，nginx 不攒包，前端逐字渲染</li>
+  <li>LLM 生成期间连接保持，最长等 300s；回答完毕连接结束</li>
+</ol>
+<h3>7.3 管理端 <code>http://admin.ljl0628.cn/</code>（两层 nginx）</h3>
+<ol>
+  <li>DNS → 81.71.65.154:80；Host 命中 admin 块 → <b>整站</b>转给 <code>admin:80</code></li>
+  <li>admin 容器的<b>内层 nginx</b> 接手：<code>/assets/</code> 长缓存、<code>/</code> SPA 回退 <code>try_files $uri /index.html</code>、<code>/api/</code> 再反代 server:8080</li>
+  <li>浏览器全程只认 admin.ljl0628.cn，内层分流对它不可见</li>
+</ol>
+<h3>7.4 备案期预览 <code>http://81.71.65.154:8081/</code></h3>
+<ol>
+  <li>浏览器直连 IP，显式端口 8081（非默认端口必须手写）</li>
+  <li>① 端口筛选：8081 上只有博客预览块，<b>必进</b>，与 Host 无关（预览块无 server_name）</li>
+  <li><code>location /</code> → blog:3000 出页面；<code>location = /api/v1/portal/ask</code> → SSE 专线（2026-09-23 补配并验证）</li>
+</ol>
+<div class="callout warn">两次独立寻址：浏览器查<b>公网 DNS</b> 得到服务器 IP；nginx 转发时查的是 <b>Docker 内网 DNS</b>（服务名 → 容器 IP）。<code>http://admin:80</code> 这类地址只存在于服务器内部，公网不可达。</div>
+
+<h2>八、FAQ 速查</h2>
+<table>
+  <tr><th>问题</th><th>一句话答案</th></tr>
+  <tr><td>为什么三份 nginx conf？</td><td>一个文件一个 server 块/一个职责：blog 分流、admin 整转、default 兜底防 IP 直连扫描</td></tr>
+  <tr><td>怎么知道执行哪个 server 块？</td><td>先按端口筛（8081 上唯一块必进），再按 Host 匹配 server_name，都不中 → default_server</td></tr>
+  <tr><td><code>proxy_pass</code> 里的 server 是容器名吗？</td><td>是 compose <b>服务名</b>（容器名叫 blog-server）；写服务名不写容器名，稳定</td></tr>
+  <tr><td><code>EXPOSE 3000</code> 是开放端口吗？</td><td>不是，纯文档声明；真正让进程听 3000 的是 <code>ENV PORT=3000</code>，让外网能访问的是 compose <code>ports:</code></td></tr>
+  <tr><td>内部端口 vs 发布端口？</td><td>内部端口 = 容器里进程监听的口（内网邻居用）；发布端口 = <code>宿主机:容器</code> 映射，给外部调用者开的门，可以不配</td></tr>
+  <tr><td>浏览器只输域名访问哪个端口？</td><td>http 默认 80、https 默认 443，地址栏隐藏默认端口；写 :8081 就用 8081</td></tr>
+  <tr><td>admin.ljl0628.cn 哪来的？</td><td>自定义子域名，注册主域名即拥有；备案后加 A 记录指向服务器即可用</td></tr>
+  <tr><td>问答为什么不流式（排查口诀）？</td><td>查两条：①nginx 有没有 <code>location = /api/v1/portal/ask</code> 且 <code>proxy_buffering off</code>；②本地 dev 是否经 Next rewrites（gzip 会缓冲 SSE，须直连后端）</td></tr>
+  <tr><td>备案通过后删什么？</td><td>两个 conf 的预览块 + compose 的 8081/8082 端口映射；加 DNS 记录、放开 443</td></tr>
+</table>
+
+<h2>九、流程图：一次请求的完整判定链路</h2>
+<figure>
+<svg viewBox="0 0 900 780" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#4b5563"/>
+    </marker>
+  </defs>
+
+  <!-- 浏览器 -->
+  <rect x="30" y="24" width="160" height="56" rx="8" fill="#f2f5f9" stroke="#9aa4b2"/>
+  <text x="110" y="48" text-anchor="middle" font-size="13" fill="#1f2329">浏览器</text>
+  <text x="110" y="68" text-anchor="middle" font-size="10" fill="#6b7280">输入 ljl0628.cn</text>
+  <line x1="190" y1="52" x2="228" y2="52" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <text x="209" y="42" text-anchor="middle" font-size="9" fill="#6b7280">①</text>
+
+  <!-- 公网 DNS -->
+  <rect x="232" y="24" width="216" height="56" rx="8" fill="#f2f5f9" stroke="#9aa4b2"/>
+  <text x="340" y="48" text-anchor="middle" font-size="12.5" fill="#1f2329">公网 DNS 解析</text>
+  <text x="340" y="68" text-anchor="middle" font-size="9.5" fill="#6b7280">ljl0628.cn → 81.71.65.154</text>
+  <text x="30" y="99" font-size="9" fill="#6b7280">① 备案通过加 A 记录后域名才可解析；备案期间直接用 IP:端口 访问预览站（8081 / 8082）</text>
+
+  <!-- ECS 大框 -->
+  <rect x="30" y="110" width="840" height="640" rx="10" fill="#fbfdff" stroke="#9aa4b2"/>
+  <text x="450" y="134" text-anchor="middle" font-size="12" font-weight="bold" fill="#374151">腾讯云 ECS · 81.71.65.154（docker compose，内网 = compose 网络）</text>
+
+  <!-- nginx 容器框 -->
+  <rect x="50" y="150" width="800" height="330" rx="8" fill="#f7faff" stroke="#1f5eff"/>
+  <text x="450" y="172" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1f5eff">blog-nginx 容器 —— 统一入口（唯一发布公网端口：80 / 8081 / 8082）</text>
+
+  <!-- 第①步 端口 -->
+  <rect x="70" y="188" width="760" height="50" rx="6" fill="#eaf1ff" stroke="#1f5eff"/>
+  <text x="82" y="209" font-size="11.5" font-weight="bold" fill="#1f2329">第①步 · 按端口筛 server 块</text>
+  <text x="82" y="227" font-size="9.5" fill="#6b7280">连 :80 → 候选 [blog 主块 · admin 块 · 444 兜底]　　连 :8081 → 仅博客预览块　　连 :8082 → 仅管理预览块</text>
+
+  <!-- 第②步 Host -->
+  <line x1="250" y1="238" x2="250" y2="258" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <rect x="70" y="262" width="520" height="54" rx="6" fill="#eaf1ff" stroke="#1f5eff"/>
+  <text x="82" y="283" font-size="11.5" font-weight="bold" fill="#1f2329">第②步 · Host 匹配 server_name（仅 :80 的块参与）</text>
+  <text x="82" y="303" font-size="9.5" fill="#6b7280">ljl0628.cn / www → blog 主块　·　admin.ljl0628.cn → admin 块　·　其他 Host → 444 拒绝</text>
+
+  <!-- 8081 / 8082 预览块 -->
+  <line x1="710" y1="238" x2="710" y2="258" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <rect x="615" y="262" width="190" height="48" rx="6" fill="#fff7e6" stroke="#d48806"/>
+  <text x="710" y="281" text-anchor="middle" font-size="10.5" fill="#1f2329">8081 博客预览块</text>
+  <text x="710" y="299" text-anchor="middle" font-size="8.5" fill="#8c6b1f">无 server_name · 端口默认块</text>
+  <line x1="830" y1="238" x2="830" y2="354" stroke="#4b5563" stroke-width="1.4"/>
+  <line x1="830" y1="354" x2="809" y2="354" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <rect x="615" y="330" width="190" height="48" rx="6" fill="#fff7e6" stroke="#d48806"/>
+  <text x="710" y="349" text-anchor="middle" font-size="10.5" fill="#1f2329">8082 管理端预览块</text>
+  <text x="710" y="367" text-anchor="middle" font-size="8.5" fill="#8c6b1f">无 server_name · 端口默认块</text>
+
+  <!-- admin 块去向说明 -->
+  <text x="268" y="340" font-size="9.5" fill="#6b7280">admin 块：整站 → admin:80（容器内层 nginx 再分静态与 /api）</text>
+
+  <!-- 第③步 路径 -->
+  <line x1="250" y1="316" x2="250" y2="348" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <rect x="70" y="352" width="520" height="64" rx="6" fill="#eaf1ff" stroke="#1f5eff"/>
+  <text x="82" y="373" font-size="11.5" font-weight="bold" fill="#1f2329">第③步 · blog 主块内按路径选 location</text>
+  <text x="82" y="391" font-size="9.5" fill="#6b7280">= /api/v1/portal/ask 与 /api/ 前缀 → 转发 server:8080</text>
+  <text x="82" y="407" font-size="9.5" fill="#6b7280">其余（/ 、/article/…、/_next/…）→ 转发 blog:3000</text>
+
+  <!-- SSE 专线说明 -->
+  <line x1="590" y1="384" x2="613" y2="418" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <rect x="615" y="398" width="190" height="48" rx="6" fill="#fffbe6" stroke="#d48806"/>
+  <text x="710" y="417" text-anchor="middle" font-size="9.5" fill="#1f2329">ask 专线：proxy_buffering off</text>
+  <text x="710" y="434" text-anchor="middle" font-size="8.5" fill="#8c6b1f">否则 SSE 攒包、憋到结束一次性吐全文</text>
+
+  <!-- nginx 框 → 三容器 -->
+  <line x1="195" y1="482" x2="195" y2="556" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <text x="205" y="548" font-size="8.5" fill="#6b7280">页面/静态 · 8081 预览</text>
+  <line x1="450" y1="482" x2="450" y2="556" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <text x="460" y="548" font-size="8.5" fill="#6b7280">所有 /api/（含 ask 专线）</text>
+  <line x1="705" y1="482" x2="705" y2="556" stroke="#4b5563" stroke-width="1.4" marker-end="url(#arr)"/>
+  <text x="695" y="548" text-anchor="end" font-size="8.5" fill="#6b7280">admin 主块 · 8082 预览</text>
+
+  <!-- 三容器 -->
+  <rect x="90" y="560" width="210" height="70" rx="8" fill="#f6ffed" stroke="#52c41a"/>
+  <text x="195" y="588" text-anchor="middle" font-size="12" fill="#1f2329">blog-blog 容器</text>
+  <text x="195" y="608" text-anchor="middle" font-size="9.5" fill="#6b7280">Next.js standalone · :3000</text>
+  <rect x="345" y="560" width="210" height="70" rx="8" fill="#f6ffed" stroke="#52c41a"/>
+  <text x="450" y="588" text-anchor="middle" font-size="12" fill="#1f2329">blog-server 容器</text>
+  <text x="450" y="608" text-anchor="middle" font-size="9.5" fill="#6b7280">Go API · :8080</text>
+  <rect x="600" y="560" width="210" height="70" rx="8" fill="#f6ffed" stroke="#52c41a"/>
+  <text x="705" y="588" text-anchor="middle" font-size="12" fill="#1f2329">blog-admin 容器</text>
+  <text x="705" y="608" text-anchor="middle" font-size="9.5" fill="#6b7280">内层 nginx 静态托管 · :80</text>
+
+  <!-- 中间件说明 -->
+  <text x="450" y="690" text-anchor="middle" font-size="9.5" fill="#6b7280">MySQL / Redis / RabbitMQ / Qdrant 同在 compose 内网，不发布任何公网端口（rabbitmq 管理界面仅绑回环，走 SSH 隧道）</text>
+</svg>
+<figcaption>图：一次请求的判定链路 —— 端口定块 → Host 定块 → 路径定 location → proxy_pass 进容器；浏览器查公网 DNS，nginx 查 Docker 内网 DNS（两次独立寻址）</figcaption>
+</figure>
+
+</body>
+</html>
