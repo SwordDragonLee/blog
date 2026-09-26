@@ -26,9 +26,13 @@ interface ChatMsg {
 /** 携带最近 3 轮对话作为上下文（6 条消息） */
 const HISTORY_TURNS = 3;
 
+// dev 下直连 Go 后端（next rewrites 代理会对 SSE 做 gzip 缓冲，导致回答憋到结束一次性输出）；
+// 生产不设 NEXT_PUBLIC_API_BASE，仍走同源 /api 由 nginx 直连后端（带 SSE 专项配置）。
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 /**
  * 前台悬浮 AI 问答：基于站内已发布文章做检索增强回答（RAG），
- * 走 SSE 流式接口 POST /api/v1/portal/ask（经 next rewrites 代理到 Go 后端）。
+ * 走 SSE 流式接口 POST /api/v1/portal/ask（dev 直连后端，生产经 nginx）。
  */
 export default function AiChat() {
   const [open, setOpen] = useState(false);
@@ -71,7 +75,7 @@ export default function AiChat() {
     ]);
 
     try {
-      const res = await fetch("/api/v1/portal/ask", {
+      const res = await fetch(`${API_ORIGIN}/api/v1/portal/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json", accept: "text/event-stream" },
         body: JSON.stringify({ question, history }),
