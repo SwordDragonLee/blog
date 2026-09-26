@@ -102,12 +102,33 @@
       "mcp__playwright__browser_close",
       "Read(//c/Users/86159/Desktop/学习/**)",
       "mcp__playwright__browser_evaluate",
-      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=\"C:\\\\\\\\Users\\\\\\\\86159\\\\\\\\Desktop\\\\\\\\学习\\\\\\\\李剑龙简历.pdf\" \"file:///C:/Users/86159/Desktop/学习/李剑龙简历-2026.html\")"
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=\"C:\\\\\\\\Users\\\\\\\\86159\\\\\\\\Desktop\\\\\\\\学习\\\\\\\\李剑龙简历.pdf\" \"file:///C:/Users/86159/Desktop/学习/李剑龙简历-2026.html\")",
+      "Bash(ssh -i ~/.ssh/blog_deploy_key -o ConnectTimeout=8 root@81.71.65.154 \"grep -n 'listen\\\\|location\\\\|proxy_buffering\\\\|proxy_pass' /opt/blog/nginx/blog.conf | head -30\")",
+      "Bash(scp -i ~/.ssh/blog_deploy_key -o ConnectTimeout=8 root@81.71.65.154:/opt/blog/nginx/blog.conf /tmp/blog-server.conf)",
+      "Bash(curl -s http://localhost:3000/ -o /tmp/blog_home.html)",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_network_requests",
+      "Read(//c/Users/86159/AppData/Local/Temp/**)",
+      "Bash(ssh -i ~/.ssh/blog_deploy_key -o StrictHostKeyChecking=accept-new root@81.71.65.154 \"cp /opt/blog/nginx/blog.conf /opt/blog/nginx/blog.conf.bak.$\\(date +%m%d%H%M\\) && echo backup-ok && docker ps --format '{{.Names}}' | grep -i nginx\")",
+      "Bash(scp -i ~/.ssh/blog_deploy_key /tmp/blog-server.conf root@81.71.65.154:/opt/blog/nginx/blog.conf)",
+      "Bash(ssh -i ~/.ssh/blog_deploy_key root@81.71.65.154 \"docker exec blog-nginx nginx -t && docker exec blog-nginx nginx -s reload && echo reload-ok\")",
+      "Bash(scp -i ~/.ssh/blog_deploy_key root@81.71.65.154:/opt/blog/nginx/blog.conf /tmp/blog-server-verify.conf)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=\"d:/agent/blog/docs/部署架构与请求链路.pdf\" \"file:///d:/agent/blog/docs/部署架构与请求链路.html\")",
+      "Bash(python -m http.server 8197 --bind 127.0.0.1)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://127.0.0.1:8197/%E9%83%A8%E7%BD%B2%E6%9E%B6%E6%9E%84%E4%B8%8E%E8%AF%B7%E6%B1%82%E9%93%BE%E8%B7%AF.html\")",
+      "Bash(powershell -NoProfile -Command 'Get-CimInstance Win32_Process -Filter \"Name='\\\\''chrome.exe'\\\\''\" | Where-Object { $_.CommandLine -like '\\\\''*ms-playwright-mcp*'\\\\'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force; Write-Output \\('\\\\''killed '\\\\'' + $_.ProcessId\\) }')",
+      "Bash(awk '{print $5}')",
+      "Bash(taskkill //F //PID 11444)",
+      "Bash(curl -s http://localhost:6333/collections/blog_articles/points/30005)",
+      "Bash(curl -s -X POST http://localhost:6333/collections/blog_articles/points/scroll -H 'Content-Type: application/json' -d '{\"filter\":{\"must\":[{\"key\":\"article_id\",\"match\":{\"value\":3}}]},\"with_payload\":true,\"limit\":100}')"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",
       "C:\\Users\\86159\\Desktop\\学习",
-      "\\tmp"
+      "\\tmp",
+      "C:\\Users\\86159\\AppData\\Local\\Temp",
+      "D:\\agent\\blog"
     ]
   }
 }
