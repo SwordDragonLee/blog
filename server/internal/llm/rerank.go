@@ -123,7 +123,6 @@ func (r *Reranker) rerankOnce(ctx context.Context, query string, docs []string) 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+r.apiKey)
-
 	resp, err := r.http.Do(req)
 	if err != nil {
 		return nil, err

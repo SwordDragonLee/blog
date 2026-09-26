@@ -135,7 +135,17 @@
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('live ask produces:', d['paths']['/portal/ask']['post'].get\\('produces'\\)\\)\")",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('live ask produces:', d['paths']['/portal/ask']['post'].get\\('produces'\\)\\); print\\('live UI path count:', len\\(d['paths']\\)\\)\")",
       "Bash(gofmt -l internal/ cmd/)",
-      "Bash(gofmt -d internal/mq/mq.go)"
+      "Bash(gofmt -d internal/mq/mq.go)",
+      "Bash(curl -s -o /tmp/ask_resp.txt -w \"HTTP:%{http_code}\\\\n\" -X POST http://localhost:8080/api/v1/portal/ask -H \"Content-Type: application/json\" -d '{\"question\":\"什么是切块\"}' --max-time 30)",
+      "Bash(curl -s -o /tmp/ask2.txt -w \"HTTP:%{http_code}\\\\n\" -X POST http://localhost:8080/api/v1/portal/ask -H \"Content-Type: application/json\" -d '{\"question\":\"LangChain 里 deprecated 装饰器怎么用\"}' --max-time 90)",
+      "Bash(xargs grep -ln \"portal/ask\")",
+      "Bash(curl -s -o /dev/null -w \"backend:%{http_code}\\\\n\" http://localhost:8080/api/v1/portal/articles --max-time 5)",
+      "Bash(curl -s -o /dev/null -w \"next:%{http_code}\\\\n\" http://localhost:3000 --max-time 8)",
+      "Bash(curl -s -i -X OPTIONS http://localhost:8080/api/v1/portal/ask -H \"Origin: http://localhost:3000\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: content-type\" --max-time 5)",
+      "Bash(curl -s -i -X POST http://localhost:8080/api/v1/portal/ask -H \"Origin: http://localhost:3000\" -H \"Content-Type: application/json\" -d '{\"question\":\"monorepo 结构\"}' --max-time 60)",
+      "Bash(curl -s --url http://localhost:8080/api/v1/portal/ask -H 'sec-ch-ua-platform: \"Windows\"' -H 'Referer: http://192.168.0.124:3000/' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0' -H 'accept: text/event-stream' -H 'sec-ch-ua: \"Microsoft Edge\";v=\"153\", \"Not_A Brand\";v=\"8\", \"Chromium\";v=\"153\"' -H 'Content-Type: application/json' -H 'sec-ch-ua-mobile: ?0' --data-raw '{\"question\":\"LangChain\",\"history\":[]}' --max-time 60 -o /tmp/curl_browser.txt -w 'HTTP:%{http_code}\\\\n')",
+      "Bash(curl -s -i -X OPTIONS http://localhost:8080/api/v1/portal/ask -H \"Origin: http://192.168.0.124:3000\" -H \"Access-Control-Request-Method: POST\" --max-time 5)",
+      "Bash(ipconfig)"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",
