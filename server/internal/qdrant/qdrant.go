@@ -41,6 +41,7 @@ type ChunkPoint struct {
 	ArticleID  uint
 	ChunkIndex int
 	Content    string
+	TitlePath  string // 所属标题路径（如「三、deprecated 装饰器 > FieldInfo 支持」）
 	Title      string
 	Slug       string
 	Vector     []float32
@@ -136,6 +137,7 @@ func (c *Client) UpsertChunks(ctx context.Context, points []ChunkPoint) error {
 				"article_id":  p.ArticleID,
 				"chunk_index": p.ChunkIndex,
 				"content":     p.Content,
+				"title_path":  p.TitlePath,
 				"title":       p.Title,
 				"slug":        p.Slug,
 			},

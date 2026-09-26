@@ -12,15 +12,17 @@ import (
 // initPipeline 组装 LLM 客户端、RAG 组件与生成任务流水线。
 func (a *App) initPipeline(context.Context) error {
 	a.llmClient = llm.NewClient(a.cfg.LLM, a.rdb, a.log)
-	// RAG 技术问答组件：embedding 客户端 + Qdrant 向量库（rag.enabled=false 时服务自身不可用）
+	// RAG 技术问答组件：embedding 客户端 + 可选 rerank 精排 + Qdrant 向量库
+	// （rag.enabled=false 时服务自身不可用）
 	embedder := llm.NewEmbedder(a.cfg.RAG, a.cfg.LLM, a.log)
+	reranker := llm.NewReranker(a.cfg.RAG, a.cfg.LLM, a.log) // rerank_enabled=false 时为 nil
 	store := qdrant.New(a.cfg.Qdrant.BaseURL, a.cfg.Qdrant.Collection, a.log)
 	// 问答面向公众、调用量大：单独配免费模型，不消耗主模型（生成套餐）额度
 	chatClient := a.llmClient
 	if qa := a.ragChatClient(); qa != nil {
 		chatClient = qa
 	}
-	a.ragSvc = service.NewRagService(a.db, chatClient, embedder, store, a.cfg.RAG, a.log)
+	a.ragSvc = service.NewRagService(a.db, chatClient, embedder, reranker, store, a.cfg.RAG, a.log)
 	a.pipeline = task.New(*a.cfg, a.db, a.rdb, a.llmClient, a.log)
 	return nil
 }

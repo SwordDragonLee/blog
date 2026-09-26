@@ -11,10 +11,11 @@ import (
 
 // SearchHit 检索命中：相似度得分 + payload 携带的块信息。
 type SearchHit struct {
-	Score   float32
-	Content string
-	Title   string
-	Slug    string
+	Score     float32
+	Content   string
+	TitlePath string
+	Title     string
+	Slug      string
 }
 
 // Scroll 全量滚动集合内的点，按点 ID 升序分页拉取。
@@ -88,9 +89,10 @@ func (c *Client) Search(ctx context.Context, vector []float32, topK int) ([]Sear
 	var result []struct {
 		Score   float32 `json:"score"`
 		Payload struct {
-			Content string `json:"content"`
-			Title   string `json:"title"`
-			Slug    string `json:"slug"`
+			Content   string `json:"content"`
+			TitlePath string `json:"title_path"`
+			Title     string `json:"title"`
+			Slug      string `json:"slug"`
 		} `json:"payload"`
 	}
 	if err := json.Unmarshal(rawRes, &result); err != nil {
@@ -99,10 +101,11 @@ func (c *Client) Search(ctx context.Context, vector []float32, topK int) ([]Sear
 	hits := make([]SearchHit, 0, len(result))
 	for _, h := range result {
 		hits = append(hits, SearchHit{
-			Score:   h.Score,
-			Content: h.Payload.Content,
-			Title:   h.Payload.Title,
-			Slug:    h.Payload.Slug,
+			Score:     h.Score,
+			Content:   h.Payload.Content,
+			TitlePath: h.Payload.TitlePath,
+			Title:     h.Payload.Title,
+			Slug:      h.Payload.Slug,
 		})
 	}
 	return hits, nil

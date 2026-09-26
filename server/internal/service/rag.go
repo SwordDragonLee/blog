@@ -15,20 +15,22 @@ import (
 )
 
 // RagService 基于 Qdrant 向量检索的「全站技术问答」：
-// 文章发布后切块向量化入库；提问时检索相关片段交由 LLM 流式回答并附引用。
+// 文章发布后切块向量化入库；提问时检索相关片段（可选 rerank 精排）
+// 交由 LLM 流式回答并附引用。
 type RagService struct {
 	db       *gorm.DB
 	chat     *llm.Client
 	embedder *llm.Embedder
+	reranker *llm.Reranker // 可为 nil：rerank 关闭时纯向量序
 	store    *qdrant.Client
 	cfg      config.RAG
 	log      *zap.Logger
 }
 
 // NewRagService 创建问答服务（各依赖可为 nil，配合 rag.enabled=false 关闭功能）。
-func NewRagService(db *gorm.DB, chat *llm.Client, embedder *llm.Embedder,
+func NewRagService(db *gorm.DB, chat *llm.Client, embedder *llm.Embedder, reranker *llm.Reranker,
 	store *qdrant.Client, cfg config.RAG, log *zap.Logger) *RagService {
-	return &RagService{db: db, chat: chat, embedder: embedder, store: store, cfg: cfg, log: log}
+	return &RagService{db: db, chat: chat, embedder: embedder, reranker: reranker, store: store, cfg: cfg, log: log}
 }
 
 // Enabled 判断问答功能是否可用。
@@ -66,7 +68,13 @@ func (s *RagService) IndexArticle(ctx context.Context, art *model.Article) error
 		s.log.Info("文章无可索引正文，跳过向量化", zap.Uint("article_id", art.ID))
 		return nil
 	}
-	vectors, err := s.embedder.Embed(ctx, chunks)
+	// 向量化输入带话题前缀（《文章标题》 > 章节路径）：纯代码块也因此携带
+	// 文章与小节的主题语义；改前缀口径后需全量重建索引保持向量空间一致
+	inputs := make([]string, len(chunks))
+	for i, ch := range chunks {
+		inputs[i] = ch.EmbedInput(art.Title)
+	}
+	vectors, err := s.embedder.Embed(ctx, inputs)
 	if err != nil {
 		return fmt.Errorf("文章 %d 向量化失败: %w", art.ID, err)
 	}
@@ -74,11 +82,12 @@ func (s *RagService) IndexArticle(ctx context.Context, art *model.Article) error
 		return fmt.Errorf("确保集合存在: %w", err)
 	}
 	points := make([]qdrant.ChunkPoint, 0, len(chunks))
-	for i, chunk := range chunks {
+	for i, ch := range chunks {
 		points = append(points, qdrant.ChunkPoint{
 			ArticleID:  art.ID,
 			ChunkIndex: i,
-			Content:    chunk,
+			Content:    ch.Content,
+			TitlePath:  ch.TitlePath,
 			Title:      art.Title,
 			Slug:       art.Slug,
 			Vector:     vectors[i],
@@ -122,24 +131,71 @@ func (s *RagService) Ask(ctx context.Context, question string, history []Turn, o
 		return nil, fmt.Errorf("问答功能未启用")
 	}
 
-	// 1. 问题向量化 + 检索
+	// 1. 问题向量化 + 粗排检索（rerank 开启时多捞候选供精排筛选）
 	vecs, err := s.embedder.Embed(ctx, []string{question})
 	if err != nil {
 		return nil, fmt.Errorf("问题向量化失败: %w", err)
 	}
-	hits, err := s.store.Search(ctx, vecs[0], s.cfg.TopK)
+	limit := s.cfg.TopK
+	if s.reranker != nil && s.cfg.RerankCandidates > limit {
+		limit = s.cfg.RerankCandidates
+	}
+	hits, err := s.store.Search(ctx, vecs[0], limit)
 	if err != nil {
 		return nil, fmt.Errorf("向量检索失败: %w", err)
 	}
+	// 阈值过滤在 rerank 之前：阈值口径是向量余弦分，rerank 分数分布不同不可比；
+	// 先过滤再精排还能用更深的候选把被噪声占掉的 top_k 名额补满
+	kept := hits[:0]
+	for _, h := range hits {
+		if h.Score >= s.cfg.ScoreThreshold {
+			kept = append(kept, h)
+		}
+	}
+	hits = kept
+
+	// rerank 精排：交叉编码器重排候选；失败降级为向量序（可用性优先于精度）
+	if s.reranker != nil && len(hits) > 1 {
+		docs := make([]string, len(hits))
+		for i, h := range hits {
+			// 与索引向量化同构的输入：话题前缀 + 块正文，交叉编码器看到同样的锚点
+			docs[i] = (IndexedChunk{Content: h.Content, TitlePath: h.TitlePath}).EmbedInput(h.Title)
+		}
+		res, err := s.reranker.Rerank(ctx, question, docs)
+		if err != nil {
+			s.log.Warn("rerank 失败，降级为向量序", zap.Error(err))
+		} else {
+			reordered := make([]qdrant.SearchHit, 0, len(hits))
+			returned := make([]bool, len(hits))
+			for _, r := range res {
+				if r.Index < len(hits) && !returned[r.Index] {
+					reordered = append(reordered, hits[r.Index])
+					returned[r.Index] = true
+				}
+			}
+			for i, h := range hits { // provider 少回结果时未覆盖的候选按原序补尾，防丢
+				if !returned[i] {
+					reordered = append(reordered, h)
+				}
+			}
+			hits = reordered
+		}
+	}
+	// 引用分仍用向量分（与阈值同口径、前端展示语义不变），rerank 只改排序
+	if len(hits) > s.cfg.TopK {
+		hits = hits[:s.cfg.TopK]
+	}
+
 	// 按文章分组：同一文章的多个命中块合并进同一组上下文，「资料来源」每篇只出一条。
 	// 分组必须在组装上下文时完成而非前端展示层去重——正文 [n] 标注引用的是分组后的
 	// 文章序号，展示层去重会让 [3] 指向列表里不存在的条目。
 	// hits 按得分降序，每组首个块即组内最高分，其摘要与得分代表该文章。
+	type hitContent struct{ path, text string }
 	type articleGroup struct {
 		slug     string
 		title    string
 		score    float32
-		contents []string
+		contents []hitContent
 	}
 	groups := make([]*articleGroup, 0, len(hits))
 	bySlug := make(map[string]*articleGroup, len(hits))
@@ -153,7 +209,7 @@ func (s *RagService) Ask(ctx context.Context, question string, history []Turn, o
 			bySlug[h.Slug] = g
 			groups = append(groups, g)
 		}
-		g.contents = append(g.contents, h.Content)
+		g.contents = append(g.contents, hitContent{path: h.TitlePath, text: h.Content})
 	}
 
 	// 2. 无相关内容：不调 LLM，直接给固定话术（省 token 且不编造）；
@@ -168,11 +224,20 @@ func (s *RagService) Ask(ctx context.Context, question string, history []Turn, o
 	citations := make([]Citation, 0, len(groups))
 	var ctxParts strings.Builder
 	for i, g := range groups {
-		snippet := g.contents[0]
+		snippet := g.contents[0].text
 		if r := []rune(snippet); len(r) > 300 {
 			snippet = string(r[:300]) + "..."
 		}
-		ctxParts.WriteString(fmt.Sprintf("\n[%d] 《%s》\n%s\n", i+1, g.title, strings.Join(g.contents, "\n\n")))
+		// 片段前缀标题路径（旧数据无路径则原样），让模型知道片段讲的是哪一节
+		parts := make([]string, 0, len(g.contents))
+		for _, ct := range g.contents {
+			if ct.path != "" {
+				parts = append(parts, "· "+ct.path+"\n"+ct.text)
+			} else {
+				parts = append(parts, ct.text)
+			}
+		}
+		ctxParts.WriteString(fmt.Sprintf("\n[%d] 《%s》\n%s\n", i+1, g.title, strings.Join(parts, "\n\n")))
 		citations = append(citations, Citation{
 			Title:   g.title,
 			Slug:    g.slug,

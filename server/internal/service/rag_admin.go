@@ -8,6 +8,11 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
+
+	"blog/server/internal/model"
+
+	"go.uber.org/zap"
 )
 
 // RagIndexStat 单篇已索引文章的向量块统计。
@@ -97,3 +102,55 @@ func (s *RagService) Probe(ctx context.Context, question string, topK int, thres
 
 // ScoreThreshold 当前配置的相似度阈值，作为检索测试的默认值。
 func (s *RagService) ScoreThreshold() float32 { return s.cfg.ScoreThreshold }
+
+// rebuildArticleTimeout 单篇重建超时：与发布链路 indexForRAG 的 60s 对齐
+//（发布侧的超时包裹在 article.go 层，这里直接调 IndexArticle 必须自带）。
+const rebuildArticleTimeout = 60 * time.Second
+
+// RebuildFailure 全量重建报告中单篇文章的失败记录。
+type RebuildFailure struct {
+	ArticleID uint   `json:"article_id"`
+	Slug      string `json:"slug"`
+	Error     string `json:"error"`
+}
+
+// RebuildReport 全量重建结果汇总。
+type RebuildReport struct {
+	Total     int              `json:"total"`
+	Succeeded int              `json:"succeeded"`
+	Failed    int              `json:"failed"`
+	Failures  []RebuildFailure `json:"failures"`
+}
+
+// RebuildAll 全量重建已发布文章的向量索引：逐篇重新切块向量化覆盖写入
+//（IndexArticle 内部先清旧向量再写，确定性 point ID 幂等）。
+// 用于切块算法或 embedding 模型变更后刷新存量数据，避免逐篇重新发版。
+// 串行执行——文章量为个位数到十位数，embedding 侧有重试限流，并发无益。
+func (s *RagService) RebuildAll(ctx context.Context) (*RebuildReport, error) {
+	if !s.Enabled() {
+		return nil, fmt.Errorf("问答功能未启用")
+	}
+	var arts []model.Article
+	if err := s.db.WithContext(ctx).
+		Where("status = ?", model.ArticleStatusPublished).
+		Order("id ASC").Find(&arts).Error; err != nil {
+		return nil, fmt.Errorf("查询已发布文章: %w", err)
+	}
+	report := &RebuildReport{Total: len(arts), Failures: []RebuildFailure{}}
+	for i := range arts {
+		actx, cancel := context.WithTimeout(ctx, rebuildArticleTimeout)
+		err := s.IndexArticle(actx, &arts[i])
+		cancel()
+		if err != nil {
+			s.log.Warn("重建文章向量失败",
+				zap.Uint("article_id", arts[i].ID), zap.String("slug", arts[i].Slug), zap.Error(err))
+			report.Failed++
+			report.Failures = append(report.Failures, RebuildFailure{
+				ArticleID: arts[i].ID, Slug: arts[i].Slug, Error: err.Error(),
+			})
+			continue
+		}
+		report.Succeeded++
+	}
+	return report, nil
+}

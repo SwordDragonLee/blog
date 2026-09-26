@@ -107,10 +107,18 @@ type RAG struct {
 	ChatBaseURL             string  `mapstructure:"chat_base_url"`   // 空 = 复用 llm.base_url
 	ChatAPIKey              string  `mapstructure:"chat_api_key"`    // 空 = 复用 llm.api_key
 	ChatMaxTokens           int     `mapstructure:"chat_max_tokens"` // 单次回答长度上限，缺省 2048
-	ChunkSize               int     `mapstructure:"chunk_size"`      // 切块目标字符数，缺省 800
-	ChunkOverlap            int     `mapstructure:"chunk_overlap"`   // 相邻块重叠字符数，缺省 100
+	ChunkSize               int     `mapstructure:"chunk_size"`      // 切块目标字符数，缺省 1000
+	ChunkOverlap            int     `mapstructure:"chunk_overlap"`   // 硬切时拼入下一片段的尾部完整行长度，缺省 120
 	TopK                    int     `mapstructure:"top_k"`           // 检索条数，缺省 5
 	ScoreThreshold          float32 `mapstructure:"score_threshold"` // 相似度阈值，低于丢弃，缺省 0.3
+	// 重排序：粗排多捞 rerank_candidates 个候选，交叉编码器精排后取 top_k 喂 LLM。
+	// rerank_base_url/api_key 留空时逐级回落 embedding → llm（bge-reranker 与
+	// bge-m3 同在 SiliconFlow，通常复用 embedding 凭据即可）；失败自动降级向量序
+	RerankEnabled    bool   `mapstructure:"rerank_enabled"`
+	RerankModel      string `mapstructure:"rerank_model"`      // 缺省 BAAI/bge-reranker-v2-m3
+	RerankBaseURL    string `mapstructure:"rerank_base_url"`   // 空 = 复用 embedding_base_url
+	RerankAPIKey     string `mapstructure:"rerank_api_key"`    // 空 = 复用 embedding_api_key
+	RerankCandidates int    `mapstructure:"rerank_candidates"` // 粗排候选量，缺省 top_k×4
 }
 
 // Load 读取指定路径的 yaml 配置。config.yaml 只放非私密配置；密钥/密码等私密项经环境变量注入。
@@ -208,10 +216,10 @@ func (c *Config) applyDefaults() {
 		c.RAG.EmbeddingDimensions = 2048
 	}
 	if c.RAG.ChunkSize == 0 {
-		c.RAG.ChunkSize = 800
+		c.RAG.ChunkSize = 1000
 	}
 	if c.RAG.ChunkOverlap == 0 {
-		c.RAG.ChunkOverlap = 100
+		c.RAG.ChunkOverlap = 120
 	}
 	if c.RAG.TopK == 0 {
 		c.RAG.TopK = 5
@@ -221,5 +229,12 @@ func (c *Config) applyDefaults() {
 	}
 	if c.RAG.ScoreThreshold == 0 {
 		c.RAG.ScoreThreshold = 0.3
+	}
+	if c.RAG.RerankModel == "" {
+		c.RAG.RerankModel = "BAAI/bge-reranker-v2-m3"
+	}
+	if c.RAG.RerankCandidates == 0 {
+		// 位于 TopK 默认值之后：粗排候选 4 倍于最终保留量，精排才有重排余地
+		c.RAG.RerankCandidates = c.RAG.TopK * 4
 	}
 }

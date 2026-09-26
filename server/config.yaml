@@ -78,7 +78,15 @@ rag:
   chat_base_url: https://open.bigmodel.cn/api/paas/v4
   chat_api_key: "" # 留空复用 llm.api_key（免费模型不扣余额）
   chat_max_tokens: 2048 # 单次回答长度上限，问答无需长文
-  chunk_size: 800 # 切块目标字符数（中文按字计），标题处优先断开
-  chunk_overlap: 100 # 相邻块重叠字符数，避免答案句被截断在边界上
-  top_k: 5 # 每次提问检索的相似片段条数
+  chunk_size: 1000 # 切块目标字符数（中文按 rune 计），按标题分节打包；硬上限=1.6 倍
+  chunk_overlap: 120 # 超长节硬切时上一片段尾部拼入下一片段的字符数（只取完整行，结构边界不重叠）
+  top_k: 5 # 每次提问检索的相似片段条数（rerank 开启时为精排后保留条数）
   score_threshold: 0.5 # 相似度分数阈值，低于该值的命中视为噪声丢弃（bge-m3 实测：切题 0.55+，跨域噪声 0.35-0.42）
+  # 重排序：粗排多捞候选，交叉编码器精排后取 top_k 喂 LLM。bge-reranker-v2-m3 与
+  # bge-m3 同在 SiliconFlow（免费），base_url/api_key 留空直接复用 embedding 凭据；
+  # rerank 调用失败自动降级为向量序，不影响问答可用性
+  rerank_enabled: true
+  rerank_model: BAAI/bge-reranker-v2-m3
+  rerank_base_url: "" # 留空复用 embedding_base_url
+  rerank_api_key: "" # 留空复用 embedding_api_key
+  rerank_candidates: 20 # 粗排候选量（进入精排的块数），应明显大于 top_k
