@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"gorm.io/datatypes"
 )
 
 // 配图类型：cover 封面 + 四种业务图表。
@@ -22,7 +20,7 @@ type SvgAsset struct {
 	Placeholder string         `gorm:"size:32;index" json:"placeholder"` // 正文中的 {{figure:xxx}} 标识
 	Kind        string         `gorm:"size:32" json:"kind"`
 	Title       string         `gorm:"size:256" json:"title"`
-	Spec        datatypes.JSON `json:"spec"`
+	Spec        JSON           `json:"spec" swaggertype:"object"`
 	SVGContent  string         `gorm:"mediumtext" json:"-"`
 	CreatedAt   time.Time      `json:"created_at"`
 }

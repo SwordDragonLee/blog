@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"gorm.io/datatypes"
 )
 
 // RepoAnalysis LLM 对仓库的分析结果（技术栈、摘要、亮点），文章的归属来源。
@@ -14,9 +12,9 @@ type RepoAnalysis struct {
 	RepoName      string         `gorm:"size:256" json:"repo_name"`
 	DefaultBranch string         `gorm:"size:64" json:"default_branch"`
 	HeadCommit    string         `gorm:"size:64" json:"head_commit"`
-	TechStack     datatypes.JSON `json:"tech_stack"`
+	TechStack     JSON           `json:"tech_stack" swaggertype:"array,string"`
 	Summary       string         `gorm:"type:text" json:"summary"`
-	Highlights    datatypes.JSON `json:"highlights"`
+	Highlights    JSON           `json:"highlights" swaggertype:"array,string"`
 	CreatedAt     time.Time      `json:"created_at"`
 }
 

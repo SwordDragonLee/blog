@@ -23,7 +23,6 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -422,13 +421,13 @@ func countWords(s string) int {
 	return n
 }
 
-// jsonify 序列化为 datatypes.JSON（存库用），失败返回空对象。
-func jsonify(v any) datatypes.JSON {
+// jsonify 序列化为 model.JSON（存库用），失败返回空对象。
+func jsonify(v any) model.JSON {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return datatypes.JSON("{}")
+		return model.JSON("{}")
 	}
-	return datatypes.JSON(b)
+	return model.JSON(b)
 }
 
 func isDuplicateErr(err error) bool {

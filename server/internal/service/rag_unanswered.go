@@ -12,7 +12,6 @@ import (
 	"blog/server/internal/model"
 
 	"go.uber.org/zap"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -55,10 +54,10 @@ func (s *RagService) CaptureUnanswered(ctx context.Context, question string, emb
 	cctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	var embJSON datatypes.JSON
+	var embJSON model.JSON
 	if embedding != nil {
 		if data, err := json.Marshal(embedding); err == nil {
-			embJSON = datatypes.JSON(data)
+			embJSON = model.JSON(data)
 		}
 	}
 	now := time.Now()

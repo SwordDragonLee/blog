@@ -1,0 +1,1121 @@
+basePath: /api/v1
+definitions:
+  api.askRequest:
+    properties:
+      history:
+        items:
+          $ref: '#/definitions/service.Turn'
+        type: array
+      question:
+        type: string
+    type: object
+  api.createTaskRequest:
+    properties:
+      git_url:
+        type: string
+    type: object
+  api.loginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  api.loginResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/model.AdminUser'
+    type: object
+  api.updateArticleRequest:
+    properties:
+      content_md:
+        type: string
+      summary:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+    type: object
+  api.updateProfileRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  model.AdminUser:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
+  model.Article:
+    properties:
+      content_md:
+        type: string
+      cover_asset_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      like_count:
+        type: integer
+      published_at:
+        type: string
+      repo_analysis_id:
+        type: integer
+      slug:
+        type: string
+      sort_order:
+        type: integer
+      status:
+        type: string
+      summary:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      updated_at:
+        type: string
+      word_count:
+        type: integer
+    type: object
+  model.AskUnanswered:
+    properties:
+      first_seen_at:
+        type: string
+      hits:
+        description: 同键提问次数
+        type: integer
+      id:
+        type: integer
+      last_seen_at:
+        type: string
+      normalized_key:
+        description: 归一化去重键
+        type: string
+      question:
+        description: 最近一次提问原文
+        type: string
+    type: object
+  model.GenTask:
+    properties:
+      created_at:
+        type: string
+      error:
+        type: string
+      git_url:
+        type: string
+      id:
+        type: integer
+      message:
+        type: string
+      progress:
+        type: integer
+      queued_at:
+        description: |-
+          QueuedAt 消息成功投递到 MQ 的时刻；NULL 表示尚未投递成功（孤儿任务，
+          由启动扫描补投），是「落库」与「投递」两步之间崩溃的补偿依据。
+        type: string
+      repo_analysis_id:
+        type: integer
+      status:
+        type: string
+      step:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  resp.Envelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  service.ArticleDetail:
+    properties:
+      content_md:
+        type: string
+      cover_asset_id:
+        type: integer
+      created_at:
+        type: string
+      figures:
+        items:
+          $ref: '#/definitions/service.FigureMeta'
+        type: array
+      id:
+        type: integer
+      like_count:
+        type: integer
+      published_at:
+        type: string
+      repo_analysis_id:
+        type: integer
+      slug:
+        type: string
+      sort_order:
+        type: integer
+      status:
+        type: string
+      summary:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      updated_at:
+        type: string
+      word_count:
+        type: integer
+    type: object
+  service.FigureMeta:
+    properties:
+      article_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      kind:
+        type: string
+      placeholder:
+        type: string
+      title:
+        type: string
+    type: object
+  service.PageData:
+    properties:
+      items: {}
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  service.PortalArticleDetail:
+    properties:
+      content_md:
+        type: string
+      cover:
+        $ref: '#/definitions/service.PortalCover'
+      cover_asset_id:
+        type: integer
+      created_at:
+        type: string
+      figures:
+        items:
+          $ref: '#/definitions/service.PortalFigure'
+        type: array
+      id:
+        type: integer
+      like_count:
+        type: integer
+      published_at:
+        type: string
+      repo_analysis_id:
+        type: integer
+      slug:
+        type: string
+      sort_order:
+        type: integer
+      status:
+        type: string
+      summary:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      updated_at:
+        type: string
+      word_count:
+        type: integer
+    type: object
+  service.PortalCover:
+    properties:
+      id:
+        type: integer
+      kind:
+        type: string
+      title:
+        type: string
+    type: object
+  service.PortalFigure:
+    properties:
+      id:
+        type: integer
+      kind:
+        type: string
+      placeholder:
+        type: string
+      title:
+        type: string
+    type: object
+  service.PortalLikeResult:
+    properties:
+      duplicated:
+        type: boolean
+      like_count:
+        type: integer
+    type: object
+  service.PortalRelatedArticle:
+    properties:
+      published_at:
+        type: string
+      slug:
+        type: string
+      summary:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+    type: object
+  service.ProbeHit:
+    properties:
+      pass:
+        description: 得分是否达到阈值（达到才会被真实问答采纳）
+        type: boolean
+      score:
+        type: number
+      slug:
+        type: string
+      snippet:
+        type: string
+      title:
+        type: string
+    type: object
+  service.RagIndexOverview:
+    properties:
+      articles:
+        items:
+          $ref: '#/definitions/service.RagIndexStat'
+        type: array
+      total_chunks:
+        type: integer
+    type: object
+  service.RagIndexStat:
+    properties:
+      chunks:
+        type: integer
+      slug:
+        type: string
+      title:
+        type: string
+    type: object
+  service.RebuildFailure:
+    properties:
+      article_id:
+        type: integer
+      error:
+        type: string
+      slug:
+        type: string
+    type: object
+  service.RebuildReport:
+    properties:
+      failed:
+        type: integer
+      failures:
+        items:
+          $ref: '#/definitions/service.RebuildFailure'
+        type: array
+      succeeded:
+        type: integer
+      total:
+        type: integer
+    type: object
+  service.TaskDetail:
+    properties:
+      created_at:
+        type: string
+      error:
+        type: string
+      git_url:
+        type: string
+      id:
+        type: integer
+      logs:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      progress:
+        type: integer
+      queued_at:
+        description: |-
+          QueuedAt 消息成功投递到 MQ 的时刻；NULL 表示尚未投递成功（孤儿任务，
+          由启动扫描补投），是「落库」与「投递」两步之间崩溃的补偿依据。
+        type: string
+      repo_analysis_id:
+        type: integer
+      status:
+        type: string
+      step:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  service.Turn:
+    properties:
+      content:
+        type: string
+      role:
+        description: user / assistant
+        type: string
+    type: object
+info:
+  contact: {}
+  description: |-
+    AI 博客生成平台后端：管理端（任务/文章/RAG 向量索引）+ 前台门户（文章浏览/RAG 问答）。
+    统一响应结构 resp.Envelope{code, message, data}，code=0 表示成功；业务错误 code 为 HTTP 状态码。
+    /metrics 为 Prometheus 抓取端点，不在 /api/v1 之下，本文档未收录。
+  title: AI 博客平台 API
+  version: "1.0"
+paths:
+  /articles:
+    get:
+      parameters:
+      - description: 状态过滤：draft / published，可省略
+        in: query
+        name: status
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 10，上限 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/service.PageData'
+                  - properties:
+                      items:
+                        items:
+                          $ref: '#/definitions/model.Article'
+                        type: array
+                    type: object
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 文章分页列表（管理端）
+      tags:
+      - 文章
+  /articles/{id}:
+    get:
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.ArticleDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 文章详情
+      tags:
+      - 文章
+    put:
+      consumes:
+      - application/json
+      description: 已发布文章保存后自动退回 draft，需重新发版。
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 标题/摘要/正文/标签
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.updateArticleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Article'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 编辑文章
+      tags:
+      - 文章
+  /articles/{id}/offline:
+    post:
+      description: published → draft；同时清理 Redis 前台缓存并删除该篇 RAG 向量。
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Article'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 下线文章
+      tags:
+      - 文章
+  /articles/{id}/publish:
+    post:
+      description: draft → published；同时触发 Redis 前台缓存清理与 RAG 向量化（异步）。
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Article'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 发版文章
+      tags:
+      - 文章
+  /articles/{id}/regenerate-figures:
+    post:
+      parameters:
+      - description: 文章 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.ArticleDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 重新生成配图
+      tags:
+      - 文章
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 账号密码
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.loginResponse'
+              type: object
+        "401":
+          description: 账号或密码错误
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+      summary: 管理端登录
+      tags:
+      - 认证
+  /auth/profile:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AdminUser'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 查看当前管理员信息
+      tags:
+      - 认证
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 邮箱
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.updateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AdminUser'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 更新当前管理员邮箱
+      tags:
+      - 认证
+  /portal/articles:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 10，上限 100
+        in: query
+        name: page_size
+        type: integer
+      - description: 按标签过滤
+        in: query
+        name: tag
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/service.PageData'
+                  - properties:
+                      items:
+                        items:
+                          $ref: '#/definitions/model.Article'
+                        type: array
+                    type: object
+              type: object
+      summary: 文章分页列表（前台）
+      tags:
+      - 门户
+  /portal/articles/{slug}:
+    get:
+      parameters:
+      - description: 文章 slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.PortalArticleDetail'
+              type: object
+      summary: 文章详情（前台）
+      tags:
+      - 门户
+  /portal/articles/{slug}/like:
+    post:
+      parameters:
+      - description: 文章 slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.PortalLikeResult'
+              type: object
+      summary: 文章点赞
+      tags:
+      - 门户
+  /portal/articles/{slug}/related:
+    get:
+      parameters:
+      - description: 文章 slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      - description: 返回条数，默认 4
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  properties:
+                    items:
+                      items:
+                        $ref: '#/definitions/service.PortalRelatedArticle'
+                      type: array
+                  type: object
+              type: object
+      summary: 相关文章推荐
+      tags:
+      - 门户
+  /portal/ask:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        向量检索 top_k 片段 + LLM 流式生成；按 IP 限流（每分钟 10 次）。
+        请求体：question 必填；history 为可选多轮上下文。
+        响应为 text/event-stream，事件序列 delta* → citations → done，出错发 error 事件。
+      parameters:
+      - description: 问题与可选历史
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.askRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: text/event-stream（SSE 事件流，非 JSON）
+          schema:
+            type: string
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+        "429":
+          description: 提问太频繁
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+        "503":
+          description: 问答功能未启用
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+      summary: RAG 技术问答（SSE 流式）
+      tags:
+      - RAG 问答
+  /portal/figures/{file}:
+    get:
+      description: 前台 Markdown 内以 /api/v1/portal/figures/xx.svg 引用；非 JSON，直接输出 SVG。
+      parameters:
+      - description: 配图文件名，如 12.svg 或 12
+        in: path
+        name: file
+        required: true
+        type: string
+      produces:
+      - image/svg+xml
+      responses:
+        "200":
+          description: image/svg+xml
+          schema:
+            type: string
+        "400":
+          description: 非法配图 id
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+      summary: SVG 配图
+      tags:
+      - 门户
+  /rag/index:
+    get:
+      description: 滚动全量向量点、按文章分组统计块数；用于核对漏索引/残留向量。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.RagIndexOverview'
+              type: object
+        "503":
+          description: 问答功能未启用
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+      security:
+      - BearerAuth: []
+      summary: 向量索引总览
+      tags:
+      - RAG 管理
+  /rag/index/rebuild:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.RebuildReport'
+              type: object
+        "503":
+          description: 问答功能未启用
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+      security:
+      - BearerAuth: []
+      summary: 全量重建向量索引
+      tags:
+      - RAG 管理
+  /rag/probe:
+    get:
+      parameters:
+      - description: 测试问题
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: 相似度阈值 0~1，缺省取 rag.score_threshold 配置
+        in: query
+        name: threshold
+        type: number
+      - description: 返回条数 1~20，默认 10
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/service.ProbeHit'
+                  type: array
+              type: object
+        "400":
+          description: 缺少参数 q / 参数非法
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+      security:
+      - BearerAuth: []
+      summary: 检索测试
+      tags:
+      - RAG 管理
+  /rag/unanswered:
+    get:
+      description: RAG 问答无命中时落库的问题（归一化去重、计次），用于选题回流。
+      parameters:
+      - description: 模糊匹配问题原文与归一化键
+        in: query
+        name: keyword
+        type: string
+      - description: 起始日期 YYYY-MM-DD（含）
+        in: query
+        name: start
+        type: string
+      - description: 结束日期 YYYY-MM-DD（含当天）
+        in: query
+        name: end
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 10，上限 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/service.PageData'
+                  - properties:
+                      items:
+                        items:
+                          $ref: '#/definitions/model.AskUnanswered'
+                        type: array
+                    type: object
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 无命中问题列表
+      tags:
+      - RAG 管理
+  /tasks:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 10，上限 100
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/service.PageData'
+                  - properties:
+                      items:
+                        items:
+                          $ref: '#/definitions/model.GenTask'
+                        type: array
+                    type: object
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 任务分页列表
+      tags:
+      - 任务
+    post:
+      consumes:
+      - application/json
+      description: 克隆公开 Git 仓库 → 静态分析 → LLM 生成 4 篇中文文章（含 SVG 配图），落库为草稿。
+      parameters:
+      - description: Git 仓库地址
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.createTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GenTask'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 创建生成任务
+      tags:
+      - 任务
+  /tasks/{id}:
+    delete:
+      parameters:
+      - description: 任务 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Envelope'
+      security:
+      - BearerAuth: []
+      summary: 删除任务
+      tags:
+      - 任务
+    get:
+      parameters:
+      - description: 任务 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.TaskDetail'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 任务详情
+      tags:
+      - 任务
+  /tasks/{id}/cancel:
+    post:
+      parameters:
+      - description: 任务 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GenTask'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取消任务
+      tags:
+      - 任务
+  /tasks/{id}/retry:
+    post:
+      parameters:
+      - description: 任务 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/resp.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GenTask'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 重跑失败任务
+      tags:
+      - 任务
+securityDefinitions:
+  BearerAuth:
+    description: '管理端接口需在请求头携带登录接口返回的 JWT：`Authorization: Bearer <token>`。'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

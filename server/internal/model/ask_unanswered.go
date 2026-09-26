@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"gorm.io/datatypes"
 )
 
 // AskUnanswered 问答无命中问题：选题回流的原料。
@@ -15,7 +13,7 @@ type AskUnanswered struct {
 	Question      string         `gorm:"size:512" json:"question"`             // 最近一次提问原文
 	NormalizedKey string         `gorm:"size:191;uniqueIndex" json:"normalized_key"` // 归一化去重键
 	Hits          int            `gorm:"not null;default:1" json:"hits"`       // 同键提问次数
-	Embedding     datatypes.JSON `json:"-"`                                    // 1024 维向量 JSON（聚类备用）
+	Embedding     JSON           `json:"-" swaggertype:"array,number"`         // 1024 维向量 JSON（聚类备用）
 	FirstSeenAt   time.Time      `json:"first_seen_at"`
 	LastSeenAt    time.Time      `json:"last_seen_at"`
 }

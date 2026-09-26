@@ -14,7 +14,14 @@ type updateProfileRequest struct {
 	Email string `json:"email"`
 }
 
-// Profile GET /auth/profile：当前登录管理员的信息（用户名 + 邮箱）。
+// Profile GET /api/v1/auth/profile：当前登录管理员的信息（用户名 + 邮箱）。
+//
+//	@Summary 查看当前管理员信息
+//	@Tags 认证
+//	@Security BearerAuth
+//	@Produce json
+//	@Success 200 {object} resp.Envelope{data=model.AdminUser}
+//	@Router /auth/profile [get]
 func (h *AuthHandler) Profile(c *gin.Context) {
 	uid := c.GetUint(middleware.CtxUserID)
 	user, err := h.svc.Profile(c.Request.Context(), uid)
@@ -25,8 +32,16 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 	resp.OK(c, user)
 }
 
-// UpdateProfile PUT /auth/profile：更新邮箱绑定。
-// UpdateProfile PUT /auth/profile：更新邮箱绑定。
+// UpdateProfile PUT /api/v1/auth/profile：更新邮箱绑定。
+//
+//	@Summary 更新当前管理员邮箱
+//	@Tags 认证
+//	@Security BearerAuth
+//	@Accept json
+//	@Produce json
+//	@Param body body updateProfileRequest true "邮箱"
+//	@Success 200 {object} resp.Envelope{data=model.AdminUser}
+//	@Router /auth/profile [put]
 func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	uid := c.GetUint(middleware.CtxUserID)
 	var req updateProfileRequest

@@ -11,7 +11,6 @@ import (
 	"blog/server/internal/model"
 
 	"go.uber.org/zap"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +27,7 @@ type PortalRelatedArticle struct {
 	Title       string         `json:"title"`
 	Slug        string         `json:"slug"`
 	Summary     string         `json:"summary"`
-	Tags        datatypes.JSON `json:"tags"`
+	Tags        model.JSON     `json:"tags" swaggertype:"array,string"`
 	PublishedAt *time.Time     `json:"published_at"`
 }
 

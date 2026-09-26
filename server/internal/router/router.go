@@ -9,7 +9,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
+
+	_ "blog/server/docs" // swag init 产物：注册 OpenAPI 文档供 gin-swagger 读取
 )
 
 // Deps 路由装配依赖。
@@ -41,6 +45,10 @@ func New(d Deps) *gin.Engine {
 	// Prometheus 指标端点：供 Prometheus 抓取（blog_mq_* 等）。
 	// 与业务同端口暴露；生产环境建议由网关/防火墙限制来源。
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	// Swagger/OpenAPI 文档：UI 在 /swagger/index.html，原始 JSON 在 /swagger/doc.json。
+	// 供 Apifox 等工具按 URL 导入；生产环境如不想暴露接口文档，可由网关屏蔽 /swagger 前缀。
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	authHandler := api.NewAuthHandler(d.Auth)
 	taskHandler := api.NewTaskHandler(d.Tasks)
@@ -76,8 +84,9 @@ func New(d Deps) *gin.Engine {
 		admin.GET("/auth/profile", authHandler.Profile)
 		admin.PUT("/auth/profile", authHandler.UpdateProfile)
 
-		// RAG 向量索引总览与检索测试（管理端，只读）
+		// RAG 向量索引管理：总览/检索测试（只读）+ 全量重建
 		admin.GET("/rag/index", ragHandler.Index)
+		admin.POST("/rag/index/rebuild", ragHandler.Rebuild)
 		admin.GET("/rag/probe", ragHandler.Probe)
 		// 无命中问题列表：选题回流（管理端）
 		admin.GET("/rag/unanswered", ragHandler.ListUnanswered)

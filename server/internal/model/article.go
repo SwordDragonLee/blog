@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"gorm.io/datatypes"
 )
 
 // 文章状态：draft（待审核）→ publish → published → offline 回到 draft。
@@ -22,7 +20,7 @@ type Article struct {
 	ContentMD      string         `gorm:"mediumtext" json:"content_md"`
 	WordCount      int            `json:"word_count"`
 	LikeCount      int            `gorm:"not null;default:0" json:"like_count"`
-	Tags           datatypes.JSON `json:"tags"`
+	Tags           JSON           `json:"tags" swaggertype:"array,string"`
 	Status         string         `gorm:"size:16;index;default:draft" json:"status"`
 	SortOrder      int            `json:"sort_order"`
 	CoverAssetID   *uint          `json:"cover_asset_id"`

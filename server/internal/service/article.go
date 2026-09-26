@@ -16,7 +16,6 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -329,8 +328,8 @@ func CountWords(s string) int {
 	return n
 }
 
-// jsonifyTags 标签数组序列化为 datatypes.JSON（去掉空白项）。
-func jsonifyTags(tags []string) datatypes.JSON {
+// jsonifyTags 标签数组序列化为 model.JSON（去掉空白项）。
+func jsonifyTags(tags []string) model.JSON {
 	clean := make([]string, 0, len(tags))
 	for _, t := range tags {
 		if t = strings.TrimSpace(t); t != "" {
@@ -340,13 +339,13 @@ func jsonifyTags(tags []string) datatypes.JSON {
 	return jsonify(clean)
 }
 
-// jsonify 序列化为 datatypes.JSON（存库用），失败返回空对象。
-func jsonify(v any) datatypes.JSON {
+// jsonify 序列化为 model.JSON（存库用），失败返回空对象。
+func jsonify(v any) model.JSON {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return datatypes.JSON("{}")
+		return model.JSON("{}")
 	}
-	return datatypes.JSON(b)
+	return model.JSON(b)
 }
 
 // truncateRunes 按字符数截断字符串。
