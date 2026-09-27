@@ -145,7 +145,11 @@
       "Bash(curl -s -i -X POST http://localhost:8080/api/v1/portal/ask -H \"Origin: http://localhost:3000\" -H \"Content-Type: application/json\" -d '{\"question\":\"monorepo 结构\"}' --max-time 60)",
       "Bash(curl -s --url http://localhost:8080/api/v1/portal/ask -H 'sec-ch-ua-platform: \"Windows\"' -H 'Referer: http://192.168.0.124:3000/' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0' -H 'accept: text/event-stream' -H 'sec-ch-ua: \"Microsoft Edge\";v=\"153\", \"Not_A Brand\";v=\"8\", \"Chromium\";v=\"153\"' -H 'Content-Type: application/json' -H 'sec-ch-ua-mobile: ?0' --data-raw '{\"question\":\"LangChain\",\"history\":[]}' --max-time 60 -o /tmp/curl_browser.txt -w 'HTTP:%{http_code}\\\\n')",
       "Bash(curl -s -i -X OPTIONS http://localhost:8080/api/v1/portal/ask -H \"Origin: http://192.168.0.124:3000\" -H \"Access-Control-Request-Method: POST\" --max-time 5)",
-      "Bash(ipconfig)"
+      "Bash(ipconfig)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:6333/docs)",
+      "Bash(curl -s http://localhost:6333/openapi.json)",
+      "Bash(curl -s -o /dev/null -w \"openapi.json: %{http_code}\\\\n\" http://localhost:6333/openapi.json)",
+      "Bash(curl -s http://localhost:6333/collections)"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",
