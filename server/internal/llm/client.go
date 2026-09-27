@@ -4,6 +4,8 @@
 // "OpenAI 兼容" 指一套请求/响应的 JSON 格式，而非 OpenAI 公司的服务——
 // 智谱、DeepSeek、SiliconFlow 等厂商都按这套格式开放端点，换厂商只需换 base_url。
 // base_url 含 "/anthropic" 时切换到 Anthropic Messages 格式（见 client_anthropic.go）。
+// 厂商文档：智谱 https://docs.bigmodel.cn ；SiliconFlow https://docs.siliconflow.cn/cn/api-reference
+// 各端点拼接与当前配置总表见 docs/third-party-apis.md。
 package llm
 
 import (

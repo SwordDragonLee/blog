@@ -4,6 +4,7 @@
 // Anthropic Messages 只是 Claude 定义的另一种请求格式（端点、认证头、字段名与
 // OpenAI 格式不同）。智谱为兼容 Claude Code 等只认该格式的工具，专门开放了
 // 此端点——请求仍发往智谱服务器、扣智谱额度，与 Anthropic 公司无关。
+// 协议官方参考：https://docs.anthropic.com/en/api/messages ；智谱文档：https://docs.bigmodel.cn
 package llm
 
 import (

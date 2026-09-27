@@ -1,5 +1,6 @@
 // Package qdrant Qdrant 向量数据库 REST API 轻封装，供 RAG 技术问答存取文章向量。
 // 仅封装本项目需要的四个操作，刻意不引入官方 gRPC SDK 的依赖链。
+// REST API 交互式参考：https://api.qdrant.tech ；概念文档：https://qdrant.tech/documentation/concepts/
 package qdrant
 
 import (

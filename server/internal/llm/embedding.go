@@ -16,6 +16,7 @@ import (
 
 // Embedder OpenAI 兼容 /embeddings 端点客户端：文本向量化，供 RAG 检索使用。
 // 与 Chat 客户端解耦——chat 可能走 Anthropic 协议，embedding 只有 OpenAI 形态。
+// 端点文档：https://docs.siliconflow.cn/cn/api-reference（本项目用 SiliconFlow BAAI/bge-m3，免费档）
 type Embedder struct {
 	baseURL        string
 	apiKey         string

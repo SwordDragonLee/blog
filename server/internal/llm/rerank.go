@@ -18,6 +18,7 @@ import (
 // Reranker 交叉编码重排客户端（SiliconFlow /v1/rerank 等 Jina 风格端点）。
 // 与 Embedder 一样只有 OpenAI 兼容形态，但端点是 /rerank：不生成文本，
 // 仅对每个 (query, document) 对输出相关性分，供向量粗排后精排使用。
+// 端点文档：https://docs.siliconflow.cn/cn/api-reference（本项目用 BAAI/bge-reranker-v2-m3，免费档）
 type Reranker struct {
 	baseURL string
 	apiKey  string
