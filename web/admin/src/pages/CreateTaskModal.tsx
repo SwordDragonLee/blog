@@ -24,6 +24,8 @@ export function CreateTaskModal({
       const task = await taskStore.createTask(values.git_url.trim());
       message.success('任务已创建');
       form.resetFields();
+      // 创建成功即关弹窗（父层的 onCreated 只负责打开详情抽屉，不管关弹窗）
+      onClose();
       if (task?.id) onCreated(task.id);
     } catch (e) {
       // 表单校验失败时 validateFields 抛出的错误无 message，跳过提示
