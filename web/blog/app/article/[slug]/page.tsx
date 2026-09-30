@@ -23,6 +23,10 @@ const COVER_GRADIENT = "from-blue-600 via-sky-500 to-cyan-500";
 
 type Props = { params: Promise<{ slug: string }> };
 
+// generateMetadata 是 Next.js 的约定式钩子：项目代码里找不到它的调用点——
+// 渲染该路由时框架按导出名找到并调用（同 page.tsx 文件名即路由、use 前缀即 Hook），
+// 返回值被翻译成 <head> 里的 <title>/<meta description>。服务端执行，
+// 标签直接出现在 HTML 源码里，爬虫无需执行 JS；结果随页面走 ISR 缓存（60s 窗口共用一份）。
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const article = await getPortalArticle(slug);
