@@ -127,11 +127,16 @@ func (c *Client) chatOnceOpenAI(ctx context.Context, messages []Message) (string
 		MaxTokens:      c.cfg.MaxTokens,
 		ResponseFormat: &responseFormat{Type: "json_object"},
 	}
+	// 序列化：Go 结构体 → JSON 文本（[]byte）。请求体此刻还是内存里的字节，
+	// 响应回来时下方 json.NewDecoder 做反向翻译（文本 → 结构体），一进一出对称。
 	payload, err := json.Marshal(reqBody)
 	if err != nil {
 		return "", err
 	}
 	url := strings.TrimSuffix(c.cfg.BaseURL, "/") + "/chat/completions"
+	// 把 ctx 附到请求上：Do 等响应期间内部会盯着 ctx.Done()，
+	// 取消（如管理端取消任务）/停机/超时一发生，Do 立即返回 context.Canceled，
+	// 请求被中断——打断的是"等待"，goroutine 拿着 error 自己继续走错误处理。
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return "", err

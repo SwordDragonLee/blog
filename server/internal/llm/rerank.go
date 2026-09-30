@@ -124,6 +124,7 @@ func (r *Reranker) rerankOnce(ctx context.Context, query string, docs []string) 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+r.apiKey)
+	// fmt.Println("重排请求参数：", string(payload))
 	resp, err := r.http.Do(req)
 	if err != nil {
 		return nil, err
@@ -151,9 +152,12 @@ func (r *Reranker) rerankOnce(ctx context.Context, query string, docs []string) 
 		}
 		out = append(out, RerankResult{Index: res.Index, Score: res.RelevanceScore})
 	}
+	// fmt.Println("重排响应数据：", out)
 	if len(out) == 0 {
 		return nil, fmt.Errorf("响应未包含任何重排结果")
 	}
+	// provider 当前按分数降序返回 results，但顺序是实现细节而非契约，分数才是权威字段——
+	// 采信分数、自排序：上游改排序策略零影响；Stable 使并列分保持输入序（即向量粗排名次）作并列裁决。
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
 	return out, nil
 }

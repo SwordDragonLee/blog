@@ -64,8 +64,12 @@ func New(cfg *config.Config, log *zap.Logger) *App {
 // Run 装配并运行直至收到停机信号，返回进程退出码
 // （0 = 正常停机，1 = HTTP 服务异常退出或装配失败）。
 func (a *App) Run() int {
-	// 全局生命周期 ctx：收到 SIGINT/SIGTERM 后取消
+	// 全局生命周期 ctx：收到 SIGINT/SIGTERM 才取消（Ctrl+C、docker stop、air 热更新重启），
+	// 向 HTTP → consumer → MQ 一路传播，是全进程唯一的取消源。
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	// stop 只是「退订信号 + 恢复系统默认处置」，本身不会取消 ctx；
+	// 恢复默认行为的副作用：优雅停机开始后（stop 已执行）再按 Ctrl+C 直接走系统强杀，
+	// 防止停机流程卡死出不来。
 	defer stop()
 
 	// 开发自愈：debug 模式下自检「air 重编译但旧进程未被重启」的孤儿状态（见 dev_watchdog.go）

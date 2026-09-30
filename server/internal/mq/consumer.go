@@ -93,18 +93,24 @@ func (c *Consumer) Run(ctx context.Context) {
 	c.log.Info("MQ 消费者已退出")
 }
 
-// workerLoop 单个消费协程：消费循环退出（断线/拓扑异常）后延迟重连。
+// workerLoop 单个消费协程的主循环：外层是「重连壳」，真正的收发在内层 consume。
+// 正常情况下 consume 阻塞在消息收发上（一卡数小时），外层循环体一轮都走不完；
+// 只有连接/通道级故障（网络抖动、broker 重启、心跳超时）才会带着错误返回到这里，
+// 无论 broker 实际状态如何，处理方式统一：退避后重建连接与订阅。
 func (c *Consumer) workerLoop(ctx context.Context, id int) {
 	for {
 		if err := c.consume(ctx, id); err != nil && ctx.Err() == nil {
 			c.log.Warn("消费循环异常，准备重连", zap.Int("worker", id), zap.Error(err))
 		}
-		// 可中断的重连等待：不用 time.Sleep，是为了停机信号能立即打断等待
-		// （ctx 取消则退出 worker），否则等 reconnectDelay 后回到循环顶部重连
+		// 固定退避 3s 再重连：broker 不可用期间连接毫秒级失败，没有这个间隔外层
+		// 会退化成每秒上千次的热循环，空转 CPU 并打爆 broker；重连成功后内层
+		// 长阻塞，惩罚只按失败次数收。
+		// 用可中断的 select 而非 time.Sleep：停机信号（ctx 取消）一到立即退出，
+		// 不必干等满 3s 才响应停机。
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(reconnectDelay):
+		case <-time.After(reconnectDelay): // 卡住reconnectDelay秒
 		}
 	}
 }
@@ -167,7 +173,9 @@ func (c *Consumer) handleDelivery(ctx context.Context, ch *amqp091.Channel, d am
 	retry := retryCount(d.Headers)
 	logger := c.log.With(zap.Uint("task_id", msg.TaskID), zap.Int("retry", retry))
 
-	// 每条消息派生独立 context：服务停机取消父 ctx，主动取消走 CancelTask
+	// 每条消息派生独立 context：服务停机取消父 ctx，主动取消走 CancelTask。
+	// cancel 会让流水线里所有盯着 dctx 的等待（LLM 请求、git clone 子进程、SQL…）
+	// 立即以 context.Canceled 返回，错误逐级上抛，任务就此中止。
 	dctx, cancel := context.WithCancel(ctx)
 	c.register(msg.TaskID, cancel)
 	err := c.safeHandle(dctx, msg.TaskID)

@@ -28,8 +28,7 @@ func (p *Publisher) PublishTask(ctx context.Context, taskID uint) error {
 		return err
 	}
 	defer func() { _ = ch.Close() }()
-	if err := ch.PublishWithContext(ctx, ExchangeTasks, RoutingKey, false, false,
-		publishing(body, nil)); err != nil {
+	if err := ch.PublishWithContext(ctx, ExchangeTasks, RoutingKey, false, false, publishing(body, nil)); err != nil {
 		metricPublishTotal.WithLabelValues("error").Inc()
 		return fmt.Errorf("投递任务 %d 消息: %w", taskID, err)
 	}
