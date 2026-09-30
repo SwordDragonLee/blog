@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-    
+      "Bash(git push *)",
+      "Bash(grep -n -o \"AI 博客\\\\|AI博客\\\\|博客\" \"/c/Users/86159/Desktop/学习/李剑龙简历-2026.html\" | head; echo ---; wc -l \"/c/Users/86159/Desktop/学习/李剑龙简历-2026.html\")",
+      "Read(//c/Users/86159/Desktop/学习/**)",
+      "Bash(cd /d/agent/blog/server && grep -rn \"prometheus\" go.mod; echo ---; grep -rln \"prometheus\\\\|promhttp\" internal/ | head; echo ---; grep -n \"prometheus\\\\|grafana\" ../docker-compose.yml ../docker/compose.prod.yml)",
+      "Read(//d/agent/**)",
+      "Bash(file .workbuddy/*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",

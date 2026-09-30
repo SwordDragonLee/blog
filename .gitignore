@@ -11,3 +11,4 @@ server/tmp/
 .claude/scheduled_tasks.lock
 .playwright-mcp/
 rag-debug.js
+/.workbuddy/
