@@ -26,6 +26,31 @@ interface ChatMsg {
 /** 携带最近 3 轮对话作为上下文（6 条消息） */
 const HISTORY_TURNS = 3;
 
+/** 会话本地持久化：刷新不丢对话；只存最近 MAX_STORED 条控制体积 */
+const STORAGE_KEY = "blog_ai_chat_history";
+const MAX_STORED = 20;
+
+/** 从 localStorage 恢复历史对话；解析失败或结构不对就当没有 */
+function loadMessages(): ChatMsg[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter(
+        (m): m is ChatMsg =>
+          m &&
+          typeof m === "object" &&
+          (m.role === "user" || m.role === "assistant") &&
+          typeof m.content === "string",
+      )
+      .slice(-MAX_STORED);
+  } catch {
+    return [];
+  }
+}
+
 // dev 下直连 Go 后端（next rewrites 代理会对 SSE 做 gzip 缓冲，导致回答憋到结束一次性输出）；
 // 生产不设 NEXT_PUBLIC_API_BASE，仍走同源 /api 由 nginx 直连后端（带 SSE 专项配置）。
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_BASE ?? "";
@@ -43,12 +68,37 @@ export default function AiChat() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // 进行中请求的中止控制器：停止按钮触发 abort，服务端随连接断开停止生成
   const abortRef = useRef<AbortController | null>(null);
+  // 清空对话的两段式确认：第一次点击进入待确认态，3 秒内再点才执行
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 新增量文本到达时贴底滚动
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, open]);
+
+  // 挂载后从 localStorage 恢复历史对话。不能放进 useState 初始化器：
+  // SSR 首帧没有 window，且会造成服务端/客户端首帧内容不一致的水合错误
+  useEffect(() => {
+    const restored = loadMessages();
+    if (restored.length > 0) setMessages(restored);
+  }, []);
+
+  // 对话变化时写入 localStorage；空对话清掉存储。
+  // 存储不可用（隐私模式/超配额）时静默跳过，不影响对话本身
+  useEffect(() => {
+    try {
+      const kept = messages.slice(-MAX_STORED);
+      if (kept.length > 0) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(kept));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // 忽略存储异常
+    }
+  }, [messages]);
 
   // 打开面板自动聚焦输入框
   useEffect(() => {
@@ -66,6 +116,21 @@ export default function AiChat() {
   /** 停止当前回答：中断 SSE 连接，服务端随 ctx 取消停止生成，已输出部分保留在气泡里 */
   function stop() {
     abortRef.current?.abort();
+  }
+
+  /** 清空对话两段式确认：第一次点击进入待确认态（按钮变「确认清空」），
+   *  3 秒内再点才真正执行；超时未点自动还原，避免多一次误触成本。 */
+  function handleClearClick() {
+    if (!confirmingClear) {
+      setConfirmingClear(true);
+      if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+      clearTimerRef.current = setTimeout(() => setConfirmingClear(false), 3000);
+      return;
+    }
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    setConfirmingClear(false);
+    abortRef.current?.abort();
+    setMessages([]);
   }
 
   async function send() {
@@ -217,16 +282,47 @@ export default function AiChat() {
               <div className="text-sm font-bold">AI 技术问答</div>
               <div className="text-xs text-blue-100">基于本站文章内容回答</div>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="关闭"
-              className="rounded-lg p-1.5 transition hover:bg-white/15"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-0.5">
+              {/* 有对话时显示清空按钮：两段式确认，防止误触清掉持久化的历史 */}
+              {messages.length > 0 && (
+                confirmingClear ? (
+                  <button
+                    type="button"
+                    onClick={handleClearClick}
+                    aria-label="确认清空对话"
+                    className="rounded-lg bg-white/20 px-2 py-1 text-xs font-medium text-white transition hover:bg-white/30"
+                  >
+                    确认清空
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleClearClick}
+                    aria-label="清空对话"
+                    title="清空对话"
+                    className="rounded-lg p-1.5 transition hover:bg-white/15"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6h12z"
+                      />
+                    </svg>
+                  </button>
+                )
+              )}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="关闭"
+                className="rounded-lg p-1.5 transition hover:bg-white/15"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* 消息列表 */}
