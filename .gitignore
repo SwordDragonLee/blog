@@ -7,6 +7,7 @@ server/tmp/
 .env
 
 # 本地工具产物与调试脚本，不入库
+CLAUDE.local.md
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .playwright-mcp/

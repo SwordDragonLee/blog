@@ -6,7 +6,19 @@
       "Read(//c/Users/86159/Desktop/学习/**)",
       "Bash(cd /d/agent/blog/server && grep -rn \"prometheus\" go.mod; echo ---; grep -rln \"prometheus\\\\|promhttp\" internal/ | head; echo ---; grep -n \"prometheus\\\\|grafana\" ../docker-compose.yml ../docker/compose.prod.yml)",
       "Read(//d/agent/**)",
-      "Bash(file .workbuddy/*)"
+      "Bash(file .workbuddy/*)",
+      "Read(//d/workspace/gm/gm_static_stationv2/.claude/**)",
+      "Read(//d/workspace/gm/gm_static_stationv2/.claude/commands/**)",
+      "Read(//d/workspace/gm/gm_static_stationv2/.claude/rules/**)",
+      "Read(//d/workspace/gm/gm_static_stationv2/.claude/commands/superpowers/**)",
+      "Read(//d/workspace/gm/gm_static_stationv2/.claude/specs/coding/**)",
+      "Bash(grep -n \"观麦\" \"C:\\\\Users\\\\86159\\\\Desktop\\\\学习\\\\李剑龙简历-2026.html\" | head -20)",
+      "Bash(ls \"/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe\" \"/c/Program Files/Google/Chrome/Application/chrome.exe\" \"/c/Program Files \\(x86\\)/Google/Chrome/Application/chrome.exe\" 2>/dev/null)",
+      "Read(//c/Program Files \\\\\\(x86\\\\\\)/Microsoft/Edge/Application/**)",
+      "Bash(ls -la \"C:\\\\Users\\\\86159\\\\Desktop\\\\学习\\\\\" | grep -i pdf)",
+      "Read(//c/Users/86159/Desktop/**)",
+      "Bash(ls -la \"C:/Users/86159/Desktop/学习\" | grep -i \"pdf\\\\|简历\")",
+      "Bash(grep -n \"App Router\" \"C:/Users/86159/Desktop/学习/李剑龙简历-2026.html\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",
