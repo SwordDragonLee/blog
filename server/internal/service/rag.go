@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"blog/server/internal/config"
 	"blog/server/internal/llm"
@@ -120,6 +121,41 @@ const askSystemPrompt = `你是技术博客的问答助手。回答规则：
 3. 片段不足以回答时，直接说明「暂未找到相关内容」，不要编造；
 4. 回答简洁准确，可用 markdown 组织（列表/代码块）。`
 
+// rewriteTimeout 追问改写单次调用上限：改写只是检索的预处理，
+// 超时就降级用原问题检索，不能拖住整个回答。
+const rewriteTimeout = 8 * time.Second
+
+// rewriteSystemPrompt 追问改写规则：向量检索不认识代词，
+// 「它怎么配置」这类带指代的追问必须先展开成独立问题才检索得到。
+const rewriteSystemPrompt = `你是检索查询改写器。根据对话历史，把用户的最新问题改写成一个不依赖上下文、可独立理解的检索查询。
+规则：
+1. 消解代词与省略：把「它」「这个」等替换为其具体指代对象；
+2. 最新问题本身已完整独立时，原样返回；
+3. 指代无法确定时，保留原问题、只做最小补全；
+4. 只输出一个 JSON 对象：{"question": "改写后的问题"}，不要输出任何其他内容。`
+
+// rewriteQuery 调 LLM 把带上下文的追问改写成独立检索问题（condense question）。
+// 输入只取最近 2 轮（4 条消息），防 prompt 随会话膨胀；JSON 输出走 ChatJSON，
+// 复用其 markdown 包裹容错与失败重试。
+func (s *RagService) rewriteQuery(ctx context.Context, question string, history []Turn) (string, error) {
+	recent := history
+	if len(recent) > 4 {
+		recent = recent[len(recent)-4:]
+	}
+	var b strings.Builder
+	for _, t := range recent {
+		b.WriteString(fmt.Sprintf("%s: %s\n", t.Role, truncateRunes(t.Content, 500)))
+	}
+	var out struct {
+		Question string `json:"question"`
+	}
+	if err := s.chat.ChatJSON(ctx, rewriteSystemPrompt,
+		b.String()+"用户最新问题: "+question, &out, nil); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.Question), nil
+}
+
 // Ask 检索相关片段并流式生成回答：每段增量文本回调 onDelta，
 // 返回本次回答引用的文章出处。history 携带最近几轮对话上下文（可空）。
 func (s *RagService) Ask(ctx context.Context, question string, history []Turn, onDelta func(string)) ([]Citation, error) {
@@ -131,8 +167,23 @@ func (s *RagService) Ask(ctx context.Context, question string, history []Turn, o
 		return nil, fmt.Errorf("问答功能未启用")
 	}
 
+	// 0. 追问改写：检索只做文本相似度、不认识代词，带上下文的追问
+	//    先改写成独立问题再向量化；生成端消息里仍带完整 history，
+	//    模型本身能理解指代，不受影响。失败降级用原问题，不阻断回答。
+	searchQuery := question
+	if len(history) > 0 {
+		rwCtx, cancel := context.WithTimeout(ctx, rewriteTimeout)
+		if q, err := s.rewriteQuery(rwCtx, question, history); err != nil {
+			s.log.Warn("追问改写失败，用原问题检索", zap.Error(err))
+		} else if q != "" {
+			searchQuery = q
+			s.log.Info("追问已改写", zap.String("原问题", question), zap.String("改写", q))
+		}
+		cancel()
+	}
+
 	// 1. 问题向量化 + 粗排检索（rerank 开启时多捞候选供精排筛选）
-	vecs, err := s.embedder.Embed(ctx, []string{question})
+	vecs, err := s.embedder.Embed(ctx, []string{searchQuery})
 	if err != nil {
 		return nil, fmt.Errorf("问题向量化失败: %w", err)
 	}
@@ -161,7 +212,7 @@ func (s *RagService) Ask(ctx context.Context, question string, history []Turn, o
 			// 与索引向量化同构的输入：话题前缀 + 块正文，交叉编码器看到同样的锚点
 			docs[i] = (IndexedChunk{Content: h.Content, TitlePath: h.TitlePath}).EmbedInput(h.Title)
 		}
-		res, err := s.reranker.Rerank(ctx, question, docs)
+		res, err := s.reranker.Rerank(ctx, searchQuery, docs)
 		if err != nil {
 			s.log.Warn("rerank 失败，降级为向量序", zap.Error(err))
 		} else {
@@ -213,7 +264,8 @@ func (s *RagService) Ask(ctx context.Context, question string, history []Turn, o
 	}
 
 	// 2. 无相关内容：不调 LLM，直接给固定话术（省 token 且不编造）；
-	//    问题顺手落库供选题回流——vecs[0] 是检索时已算好的向量，白拿不重算
+	//    问题顺手落库供选题回流——落库用原始问题（选题回流看用户真实问了什么，
+	//    不是改写后的检索串），vecs[0] 是检索时已算好的向量，白拿不重算
 	if len(groups) == 0 {
 		s.CaptureUnanswered(ctx, question, vecs[0])
 		onDelta("暂未在博客文章中找到与该问题相关的内容，换个问法或浏览文章列表试试。")
