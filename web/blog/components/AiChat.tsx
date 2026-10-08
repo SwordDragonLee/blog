@@ -41,6 +41,8 @@ export default function AiChat() {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // 进行中请求的中止控制器：停止按钮触发 abort，服务端随连接断开停止生成
+  const abortRef = useRef<AbortController | null>(null);
 
   // 新增量文本到达时贴底滚动
   useEffect(() => {
@@ -61,6 +63,11 @@ export default function AiChat() {
       .map((m) => ({ role: m.role, content: m.content }));
   }
 
+  /** 停止当前回答：中断 SSE 连接，服务端随 ctx 取消停止生成，已输出部分保留在气泡里 */
+  function stop() {
+    abortRef.current?.abort();
+  }
+
   async function send() {
     const question = input.trim();
     if (!question || sending) return;
@@ -74,11 +81,14 @@ export default function AiChat() {
       { role: "assistant", content: "" },
     ]);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const res = await fetch(`${API_ORIGIN}/api/v1/portal/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json", accept: "text/event-stream" },
         body: JSON.stringify({ question, history }),
+        signal: controller.signal,
       });
       // 非 200：resp 统一信封（限流 429 / 未启用 503 等），直接展示 message
       if (!res.ok || !res.body) {
@@ -109,9 +119,13 @@ export default function AiChat() {
           handleFrame(frame);
         }
       }
-    } catch {
-      markFailed("网络异常，请稍后重试");
+    } catch (e) {
+      // 主动取消不算失败：已流出的部分回答原样保留
+      if (!(e instanceof DOMException && e.name === "AbortError")) {
+        markFailed("网络异常，请稍后重试");
+      }
     } finally {
+      abortRef.current = null;
       setSending(false);
     }
   }
@@ -297,17 +311,31 @@ export default function AiChat() {
                 placeholder="输入你的问题…"
                 className="max-h-28 flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
-              <button
-                type="button"
-                onClick={send}
-                disabled={sending || !input.trim()}
-                aria-label="发送"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </button>
+              {/* 回答生成中变为停止按钮：点击中断 SSE，已生成部分保留 */}
+              {sending ? (
+                <button
+                  type="button"
+                  onClick={stop}
+                  aria-label="停止回答"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                    <rect x="7" y="7" width="10" height="10" rx="1.5" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={send}
+                  disabled={!input.trim()}
+                  aria-label="发送"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </button>
+              )}
             </div>
             <div className="mt-1.5 text-center text-[11px] text-slate-400">
               回答由 AI 基于站内文章生成，可能存在错漏

@@ -91,6 +91,11 @@ func (h *RagHandler) Ask(c *gin.Context) {
 
 	citations, err := h.svc.Ask(c.Request.Context(), req.Question, req.History, onDelta)
 	if err != nil {
+		// 客户端主动取消（点停止/关面板）导致连接断开：ctx 已取消，属正常中止而非失败
+		if c.Request.Context().Err() != nil {
+			h.log.Info("客户端断开，中止回答", zap.String("ip", ip), zap.Error(err))
+			return
+		}
 		h.log.Warn("问答失败", zap.String("ip", ip), zap.Error(err))
 		writeEvent("error", map[string]string{"message": "回答生成失败，请稍后重试"})
 		return
