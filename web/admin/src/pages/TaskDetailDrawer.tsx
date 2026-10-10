@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { Alert, Button, Descriptions, Drawer, Progress, Space, Steps, Tag } from 'antd';
-import { RedoOutlined } from '@ant-design/icons';
+import { Alert, Button, Descriptions, Drawer, Progress, Space, Steps, Tag, Tooltip } from 'antd';
+import { ExpandOutlined, RedoOutlined } from '@ant-design/icons';
 import { observer } from 'mobx-react-lite';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { taskStore } from '../stores';
 import { TASK_STATUS_TEXT } from '../types';
@@ -43,6 +44,7 @@ export const TaskDetailDrawer = observer(function TaskDetailDrawer({
   onClose: () => void;
 }) {
   const logRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const task = taskStore.current;
 
   // 日志自动滚动到底部
@@ -120,7 +122,25 @@ export const TaskDetailDrawer = observer(function TaskDetailDrawer({
             />
           )}
 
-          <div style={{ fontWeight: 500, marginBottom: 8 }}>执行日志（实时）</div>
+          <div
+            style={{
+              fontWeight: 500,
+              marginBottom: 8,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span>执行日志（实时）</span>
+            <Tooltip title="独立页打开">
+              <Button
+                type="link"
+                size="small"
+                icon={<ExpandOutlined />}
+                onClick={() => navigate(`/tasks/${task.id}/logs`)}
+              />
+            </Tooltip>
+          </div>
           <div className="log-area mono" ref={logRef}>
             {taskStore.logs.length === 0 ? (
               <span style={{ color: '#64748b' }}>暂无日志</span>

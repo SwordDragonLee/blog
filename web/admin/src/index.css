@@ -28,6 +28,12 @@ body {
   word-break: break-all;
 }
 
+/* 日志独立页（/tasks/:id/logs）：占满内容区剩余高度 */
+.log-area-full {
+  height: calc(100vh - 210px);
+  min-height: 320px;
+}
+
 .editor-textarea textarea {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 13px;
