@@ -1,29 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Layout, Menu, Modal, Input, Popconfirm, Typography, message } from 'antd';
-import {
-  DatabaseOutlined,
-  DashboardOutlined,
-  FileTextOutlined,
-  QuestionCircleOutlined,
-  RocketOutlined,
-  LogoutOutlined,
-  MailOutlined,
-} from '@ant-design/icons';
+import { LogoutOutlined, MailOutlined } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { authStore } from '../stores';
+import { MENU_ITEMS, matchMenuKey } from '../router';
 import { get, put } from '../api/http';
 import type { AdminUser } from '../types';
 
 const { Sider, Header, Content } = Layout;
-
-const MENU_ITEMS = [
-  { key: '/', icon: <DashboardOutlined />, label: '工作台' },
-  { key: '/tasks', icon: <RocketOutlined />, label: '任务' },
-  { key: '/articles', icon: <FileTextOutlined />, label: '文章管理' },
-  { key: '/rag-index', icon: <DatabaseOutlined />, label: 'RAG 索引' },
-  { key: '/ask-unanswered', icon: <QuestionCircleOutlined />, label: '无命中问题' },
-];
 
 export const AdminLayout = observer(function AdminLayout() {
   const navigate = useNavigate();
@@ -51,15 +36,7 @@ export const AdminLayout = observer(function AdminLayout() {
     }
   };
 
-  const selectedKey = location.pathname.startsWith('/tasks')
-    ? '/tasks'
-    : location.pathname.startsWith('/articles')
-      ? '/articles'
-      : location.pathname.startsWith('/rag-index')
-        ? '/rag-index'
-        : location.pathname.startsWith('/ask-unanswered')
-          ? '/ask-unanswered'
-          : '/';
+  const selectedKey = matchMenuKey(location.pathname);
 
   const onLogout = () => {
     authStore.logout();
