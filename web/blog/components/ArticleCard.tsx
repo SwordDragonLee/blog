@@ -6,7 +6,7 @@ import {
   normalizeTags,
   type ArticleListItem,
 } from "@/lib/api";
-import HeartIcon from "@/components/HeartIcon";
+import { IconHeart } from "@/components/icons";
 
 /** 无封面时的渐变占位（按文章 id 稳定选取，刷新不变） */
 const COVER_GRADIENTS = [
@@ -85,7 +85,7 @@ export default function ArticleCard({ article }: { article: ArticleListItem }) {
             {words && <span>{words}</span>}
             {(article.like_count ?? 0) > 0 && (
               <span className="flex items-center gap-1">
-                <HeartIcon className="h-3 w-3" />
+                <IconHeart className="h-3 w-3" />
                 {article.like_count}
               </span>
             )}

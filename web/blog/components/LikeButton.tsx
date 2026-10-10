@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { likeArticle } from "@/lib/api";
-import HeartIcon from "@/components/HeartIcon";
+import { IconHeart } from "@/components/icons";
 
 /** localStorage 记忆已点赞文章：刷新后仍展示已赞态（服务端仍按 IP 去重兜底） */
 function likedKey(slug: string) {
@@ -65,7 +65,7 @@ export default function LikeButton({
           : "border-slate-200 bg-white text-slate-600 hover:border-rose-300 hover:text-rose-600 hover:shadow-sm"
       }`}
     >
-      <HeartIcon filled={liked} />
+      <IconHeart filled={liked} />
       <span>{count > 0 ? count : "点赞"}</span>
     </button>
   );

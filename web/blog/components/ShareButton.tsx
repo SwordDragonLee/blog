@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { IconShare } from "./icons";
 
 /**
  * 文章分享按钮：弹出文章链接二维码 + 复制链接。
@@ -64,22 +65,7 @@ export default function ShareButton() {
             : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:shadow-sm"
         }`}
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="18" cy="5" r="3" />
-          <circle cx="6" cy="12" r="3" />
-          <circle cx="18" cy="19" r="3" />
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-          <line x1="8.59" y1="10.49" x2="15.42" y2="6.51" />
-        </svg>
+        <IconShare className="h-4 w-4" />
         <span>分享</span>
       </button>
 

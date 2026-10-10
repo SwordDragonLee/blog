@@ -1,0 +1,10 @@
+import Svg, { type IconProps } from "./Svg";
+
+/** 关闭（X） */
+export default function IconClose({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+    </Svg>
+  );
+}

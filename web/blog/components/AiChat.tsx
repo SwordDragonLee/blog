@@ -5,6 +5,7 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import { IconChat, IconClose, IconSend, IconStop, IconTrash } from "./icons";
 
 /** 一条回答的引用出处（与后端 Citation 对齐） */
 interface Citation {
@@ -260,17 +261,9 @@ export default function AiChat() {
         className="fixed bottom-5 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30 transition hover:scale-105 hover:shadow-xl sm:right-6"
       >
         {open ? (
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-          </svg>
+          <IconClose className="h-6 w-6" />
         ) : (
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8 10h8M8 14h5M21 12a9 9 0 11-4.2-7.6L21 3l-1.2 4.2A8.96 8.96 0 0121 12z"
-            />
-          </svg>
+          <IconChat className="h-6 w-6" />
         )}
       </button>
 
@@ -302,13 +295,7 @@ export default function AiChat() {
                     title="清空对话"
                     className="rounded-lg p-1.5 transition hover:bg-white/15"
                   >
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6h12z"
-                      />
-                    </svg>
+                    <IconTrash className="h-4 w-4" />
                   </button>
                 )
               )}
@@ -318,9 +305,7 @@ export default function AiChat() {
                 aria-label="关闭"
                 className="rounded-lg p-1.5 transition hover:bg-white/15"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-                </svg>
+                <IconClose className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -415,9 +400,7 @@ export default function AiChat() {
                   aria-label="停止回答"
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700"
                 >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                    <rect x="7" y="7" width="10" height="10" rx="1.5" />
-                  </svg>
+                  <IconStop className="h-4 w-4" />
                 </button>
               ) : (
                 <button
@@ -427,9 +410,7 @@ export default function AiChat() {
                   aria-label="发送"
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
-                  </svg>
+                  <IconSend className="h-4.5 w-4.5" />
                 </button>
               )}
             </div>
