@@ -35,15 +35,34 @@ export class AuthStore {
     try {
       const data = await post<LoginResp>('/auth/login', { username, password });
       runInAction(() => {
-        this.token = data.token;
-        this.user = data.user || { id: 0, username };
-        localStorage.setItem(TOKEN_KEY, data.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(this.user));
+        this.setSession(data.token, data.user || { id: 0, username });
       });
     } finally {
       runInAction(() => {
         this.loggingIn = false;
       });
+    }
+  }
+
+  /** 全量替换会话：token + user 同步写内存与 localStorage（登录、改用户名后换发） */
+  setSession(token: string, user: AdminUser): void {
+    this.token = token;
+    this.user = user;
+    try {
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } catch {
+      // localStorage 不可用（如隐私模式）时仅内存生效，刷新后需重登
+    }
+  }
+
+  /** 仅更新用户资料（token 不变），localStorage 同步（改邮箱后调用） */
+  updateUser(user: AdminUser): void {
+    this.user = user;
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } catch {
+      // 同 setSession
     }
   }
 

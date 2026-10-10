@@ -30,6 +30,7 @@ type Deps struct {
 // New 构建 gin 引擎与全部路由：
 //
 //	/api/v1/auth/login                     公开
+//	/api/v1/auth/username|password         admin 组，JWT 保护（账户自助维护）
 //	/api/v1/tasks|articles|...             admin 组，JWT 保护
 //	/api/v1/portal/*                       前台只读，公开
 func New(d Deps) *gin.Engine {
@@ -83,6 +84,9 @@ func New(d Deps) *gin.Engine {
 		// profile：与登录共用 AuthHandler，走 admin JWT 组
 		admin.GET("/auth/profile", authHandler.Profile)
 		admin.PUT("/auth/profile", authHandler.UpdateProfile)
+		// 账户自助维护：改用户名（重签 JWT）、改密码（验证旧密码）
+		admin.PUT("/auth/username", authHandler.UpdateUsername)
+		admin.PUT("/auth/password", authHandler.ChangePassword)
 
 		// RAG 向量索引管理：总览/检索测试（只读）+ 全量重建
 		admin.GET("/rag/index", ragHandler.Index)

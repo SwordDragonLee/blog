@@ -4,6 +4,7 @@ import {
   FileTextOutlined,
   QuestionCircleOutlined,
   RocketOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { Login } from '../pages/Login';
 import { Dashboard } from '../pages/Dashboard';
@@ -13,6 +14,7 @@ import { Articles } from '../pages/Articles';
 import { ArticleEdit } from '../pages/ArticleEdit';
 import { RagIndex } from '../pages/RagIndex';
 import { AskUnansweredPage } from '../pages/AskUnanswered';
+import { AccountSettings } from '../pages/AccountSettings';
 import type { AppRoute } from '../types';
 
 /**
@@ -36,5 +38,11 @@ export const APP_ROUTES: AppRoute[] = [
     title: '无命中问题',
     icon: <QuestionCircleOutlined />,
     element: <AskUnansweredPage />,
+  },
+  {
+    path: '/account',
+    title: '账户设置',
+    icon: <UserOutlined />,
+    element: <AccountSettings />,
   },
 ];
