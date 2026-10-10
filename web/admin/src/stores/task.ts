@@ -1,5 +1,4 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import dayjs from 'dayjs';
 import { get, post, del } from '../api/http';
 import type { GenTask, PageData, TaskStatus } from '../types';
 
@@ -72,7 +71,7 @@ export class TaskStore {
       const task = await get<GenTask>(`/tasks/${id}`);
       runInAction(() => {
         this.current = task;
-        this.appendLog(task);
+        this.logs = task.logs ?? [];
       });
       return task;
     } finally {
@@ -91,7 +90,7 @@ export class TaskStore {
           const task = await get<GenTask>(`/tasks/${id}`);
           runInAction(() => {
             this.current = task;
-            this.appendLog(task);
+            this.logs = task.logs ?? [];
           });
           if (
             task.status === 'success' ||
@@ -117,16 +116,6 @@ export class TaskStore {
   get isCurrentRunning(): boolean {
     const s: TaskStatus | undefined = this.current?.status;
     return s === 'pending' || s === 'running';
-  }
-
-  /** step/message 有变化时追加一条日志 */
-  private appendLog(task: GenTask): void {
-    if (!task.message) return;
-    const body = `${task.step || task.status} - ${task.message}`;
-    const last = this.logs[this.logs.length - 1];
-    if (last && last.endsWith(`] ${body}`)) return;
-    this.logs.push(`[${dayjs().format('HH:mm:ss')}] ${body}`);
-    if (this.logs.length > 500) this.logs.splice(0, this.logs.length - 500);
   }
 
   resetCurrent(): void {

@@ -26,6 +26,8 @@ export interface GenTask {
   repo_analysis_id?: number | null;
   created_at: string;
   updated_at: string;
+  /** 详情接口返回的执行日志（Redis 保留最近 200 条，7 天过期）；列表接口无此字段 */
+  logs?: string[];
 }
 
 // 文章状态：draft（待审核）→ publish → published → offline 回到 draft
