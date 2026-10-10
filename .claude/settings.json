@@ -18,7 +18,22 @@
       "Bash(ls -la \"C:\\\\Users\\\\86159\\\\Desktop\\\\学习\\\\\" | grep -i pdf)",
       "Read(//c/Users/86159/Desktop/**)",
       "Bash(ls -la \"C:/Users/86159/Desktop/学习\" | grep -i \"pdf\\\\|简历\")",
-      "Bash(grep -n \"App Router\" \"C:/Users/86159/Desktop/学习/李剑龙简历-2026.html\")"
+      "Bash(grep -n \"App Router\" \"C:/Users/86159/Desktop/学习/李剑龙简历-2026.html\")",
+      "Bash(git restore *)",
+      "Bash(npx tsc *)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_run_code_unsafe",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(git -C /d/agent/blog status --short)",
+      "Bash(rm -f tsconfig.tsbuildinfo)",
+      "Bash(echo \"tsc_exit=$?\")",
+      "Bash(curl -s -o /dev/null -w 'blog:3000 -> %{http_code}\\\\n' --max-time 3 http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w 'backend:8080 -> %{http_code}\\\\n' --max-time 3 http://localhost:8080/api/v1/articles)",
+      "Bash(ipconfig)",
+      "Bash(curl -s -i --max-time 5 -X OPTIONS http://192.168.1.11:8080/api/v1/portal/ask -H 'Origin: http://192.168.1.11:3000' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type')",
+      "Bash(curl -s -i --max-time 5 -X OPTIONS http://192.168.1.11:8080/api/v1/portal/ask -H 'Origin: http://127.0.0.1:3000' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type')",
+      "Bash(curl -s -i --max-time 5 -X OPTIONS http://192.168.1.11:8080/api/v1/portal/ask -H 'Origin: http://localhost:3000' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type')",
+      "Bash(curl -s -i --max-time 5 -X OPTIONS http://192.168.1.11:8080/api/v1/portal/ask -H 'Origin: http://192.168.1.11:3002' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type')"
     ],
     "additionalDirectories": [
       "C:\\Users\\86159\\.ssh",
