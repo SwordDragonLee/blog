@@ -208,7 +208,8 @@ func (p *Pipeline) writeArticle(ctx context.Context, repoName string, analysisJS
 				return fmt.Errorf("figures[%d].id 重复: %s", i, f.ID)
 			}
 			seen[f.ID] = true
-			switch f.Kind {
+			// LLM 输出的 kind 是任意字符串，先转枚举值域做合法性校验
+			switch model.FigureKind(f.Kind) {
 			case model.FigureKindArchitecture, model.FigureKindFlow,
 				model.FigureKindCompare, model.FigureKindTimeline:
 			default:
@@ -265,7 +266,7 @@ func (p *Pipeline) saveArticle(ctx context.Context, analysisID uint, out *llm.Ar
 // saveFiguresAndCover 渲染并保存文章配图与封面。
 func (p *Pipeline) saveFiguresAndCover(ctx context.Context, art *model.Article, figures []llm.FigureOut) error {
 	for _, f := range figures {
-		svg, err := svggen.Render(f.Kind, f.Title, string(f.Data))
+		svg, err := svggen.Render(model.FigureKind(f.Kind), f.Title, string(f.Data))
 		if err != nil {
 			// 渲染是确定性流程，失败仅跳过该图，不阻塞整篇文章
 			p.log.Warn("渲染配图失败，跳过",
@@ -275,7 +276,7 @@ func (p *Pipeline) saveFiguresAndCover(ctx context.Context, art *model.Article, 
 		asset := &model.SvgAsset{
 			ArticleID:   art.ID,
 			Placeholder: f.ID,
-			Kind:        f.Kind,
+			Kind:        model.FigureKind(f.Kind),
 			Title:       f.Title,
 			Spec:        jsonify(f),
 			SVGContent:  svg,

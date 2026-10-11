@@ -4,10 +4,12 @@ import (
 	"time"
 )
 
-// 文章状态：draft（待审核）→ publish → published → offline 回到 draft。
+// ArticleStatus 文章状态：draft（待审核）→ publish → published → offline 回到 draft。
+type ArticleStatus string
+
 const (
-	ArticleStatusDraft     = "draft"
-	ArticleStatusPublished = "published"
+	ArticleStatusDraft     ArticleStatus = "draft"
+	ArticleStatusPublished ArticleStatus = "published"
 )
 
 // Article 生成的技术文章，经审核发版后在前台展示。
@@ -21,7 +23,7 @@ type Article struct {
 	WordCount      int            `json:"word_count"`
 	LikeCount      int            `gorm:"not null;default:0" json:"like_count"`
 	Tags           JSON           `json:"tags" swaggertype:"array,string"`
-	Status         string         `gorm:"size:16;index;default:draft" json:"status"`
+	Status         ArticleStatus  `gorm:"size:16;index;default:draft" json:"status"`
 	SortOrder      int            `json:"sort_order"`
 	CoverAssetID   *uint          `json:"cover_asset_id"`
 	PublishedAt    *time.Time     `json:"published_at"`

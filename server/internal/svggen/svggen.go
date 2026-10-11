@@ -9,7 +9,7 @@ import (
 
 type renderFn func(title string, data string) (string, error)
 
-var renderers = map[string]renderFn{
+var renderers = map[model.FigureKind]renderFn{
 	model.FigureKindArchitecture: renderArchitecture,
 	model.FigureKindFlow:         renderFlow,
 	model.FigureKindCompare:      renderCompare,
@@ -17,7 +17,7 @@ var renderers = map[string]renderFn{
 }
 
 // Render 按图类型分发渲染，data 为 LLM 配图数据（JSON 字符串）。
-func Render(kind, title string, data string) (string, error) {
+func Render(kind model.FigureKind, title string, data string) (string, error) {
 	fn := renderers[kind]
 	if fn == nil {
 		return "", fmt.Errorf("不支持的图类型: %s", kind)

@@ -145,7 +145,7 @@ func (s *PortalService) GetArticle(ctx context.Context, slug string) (*PortalArt
 		First(&cover).Error
 	switch {
 	case err == nil:
-		detail.Cover = &PortalCover{ID: cover.ID, Kind: cover.Kind, Title: cover.Title}
+		detail.Cover = &PortalCover{ID: cover.ID, Kind: string(cover.Kind), Title: cover.Title}
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		// 无封面时保持 nil
 	default:

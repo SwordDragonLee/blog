@@ -2,20 +2,22 @@ package model
 
 import "time"
 
-// 任务状态：pending 排队 → running 执行 → success / failed / canceled 终态。
+// TaskStatus 任务状态：pending 排队 → running 执行 → success / failed / canceled 终态。
+type TaskStatus string
+
 const (
-	TaskStatusPending  = "pending"
-	TaskStatusRunning  = "running"
-	TaskStatusSuccess  = "success"
-	TaskStatusFailed   = "failed"
-	TaskStatusCanceled = "canceled"
+	TaskStatusPending  TaskStatus = "pending"
+	TaskStatusRunning  TaskStatus = "running"
+	TaskStatusSuccess  TaskStatus = "success"
+	TaskStatusFailed   TaskStatus = "failed"
+	TaskStatusCanceled TaskStatus = "canceled"
 )
 
 // GenTask 一次仓库博客生成任务的执行记录。
 type GenTask struct {
 	ID             uint   `gorm:"primaryKey" json:"id"`
 	GitURL         string `gorm:"size:512" json:"git_url"`
-	Status         string `gorm:"size:16;index;default:pending" json:"status"`
+	Status         TaskStatus `gorm:"size:16;index;default:pending" json:"status"`
 	Progress       int    `json:"progress"`
 	Step           string `gorm:"size:64" json:"step"`
 	Message        string `gorm:"size:512" json:"message"`

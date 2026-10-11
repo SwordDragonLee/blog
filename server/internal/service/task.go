@@ -258,7 +258,7 @@ func (s *TaskService) articleCounts(ctx context.Context, taskIDs []uint) (map[ui
 	out := make(map[uint]TaskArticles, len(taskIDs))
 	type row struct {
 		TaskID uint
-		Status string
+		Status model.ArticleStatus
 		Cnt    int64
 	}
 	var rows []row

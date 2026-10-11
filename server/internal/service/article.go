@@ -278,7 +278,7 @@ func (s *ArticleService) RegenerateFigures(ctx context.Context, id uint) (*Artic
 				zap.Uint("article_id", art.ID), zap.String("figure", f.ID), zap.Error(rerr))
 			continue
 		}
-		spec := llm.FigureOut{ID: asset.Placeholder, Kind: asset.Kind, Title: title, Data: f.Data}
+		spec := llm.FigureOut{ID: asset.Placeholder, Kind: string(asset.Kind), Title: title, Data: f.Data}
 		if uerr := s.db.WithContext(ctx).Model(&model.SvgAsset{}).
 			Where("id = ?", asset.ID).
 			Updates(map[string]any{"title": title, "spec": jsonify(spec), "svg_content": svg}).
