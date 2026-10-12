@@ -28,6 +28,26 @@ func (h *ArticleHandler) List(c *gin.Context) {
 }
 ```
 
+## 入参传递：req 止步 api 层，Input 按阈值引入
+
+- 请求结构体（req）定义在 handler 文件内（私有、带 json/binding tag），**禁止**迁入 model、**禁止**被 service import；企业级项目均为分层映射（K8s/Grafana 风格），共享 DTO 包（gin-vue-admin 式 request 包）**不采用**
+- service 入参默认**展开为语义参数**（参照 `AuthService.UpdateProfile(ctx, uid, email)`），model 组装在 service 内完成；ctx 恒为第一参数且不计入参数数
+- 出现任一信号，改用 **service 包定义的 Input 结构**：
+  - 业务参数 ≥ 5
+  - patch 部分更新（指针/omitempty 表达「未传」）
+  - 同一方法被第二个入口复用（CLI / MQ / 定时任务）
+  - 提前触发：相邻同型参数 ≥ 3（换位静默错误，编译器挡不住）
+- Input **禁止**携带 json/binding tag——格式校验属传输边界（req 的 binding + `httputil.BindJSON`），业务校验属 service，Input 到达时已是干净语义值
+- 映射收进 req 的 `toInput()` 私有方法，不摊在 handler 主流程；**禁止**反射拷贝库（copier 等）替代显式映射（丢编译期检查）
+
+```go
+// ✅ 简单接口：拆解展开，两段直达（无 Input）
+m, err := h.menuSvc.Create(c.Request.Context(), req.Name, req.Slug, req.SortOrder, req.Visible)
+
+// ✅ 大表单 / patch：service.Input + toInput 薄映射（Grafana 风格）
+art, err := h.articleSvc.Update(c.Request.Context(), req.toInput(id))
+```
+
 ## context：一切阻塞操作可中断
 
 - HTTP 请求（`http.NewRequestWithContext`）、子进程（`exec.CommandContext`）、DB（`db.WithContext(ctx)`）**必须**携带 ctx——管理端取消任务、服务停机依赖它即时打断
@@ -65,6 +85,13 @@ case <-time.After(reconnectDelay):
 
 - **密钥/密码只进 `.env`**（已被 gitignore）；`config.yaml` 不出现任何私密项
 - 新增配置项：`config/` 结构体 + yaml 默认值 + `.env.example` 同步补模板；环境变量覆盖规则 = 点号换下划线（`llm.api_key` → `LLM_API_KEY`）
+
+## 枚举值域：类型声明而非裸 string 常量
+
+- 受限字符串值域（状态、类别等枚举）必须 `type X string` + 常量带类型 + 结构体字段同步类型化（参照 `model.ArticleStatus` / `model.TaskStatus` / `model.FigureKind`）；命名类型底层 kind 为 string，GORM 落库与 JSON 序列化零适配
+- 类型化只拦**任意 string 变量**；非法字面量靠入口校验兜底——外部输入（LLM 产出、用户请求）进值域前显式转换并走白名单 switch（参照 `task/pipeline.go` 的 figures 校验）或 `IsValid()`
+- 出参 DTO / LLM 协议结构保持 string，边界处显式 `string(...)` / `model.X(...)` 回转
+- 自由文本字段（标题、URL、描述等）**禁止**包类型；gin context key（`middleware.CtxUserID` 类）保持裸 string 常量——类型化破坏 `c.Get(string)` 人体工学
 
 ## 注释与命名
 
