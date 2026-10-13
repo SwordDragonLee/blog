@@ -252,7 +252,7 @@ func (c *Config) applyDefaults() {
 		c.RAG.ChatMaxTokens = 2048
 	}
 	if c.RAG.ScoreThreshold == 0 {
-		c.RAG.ScoreThreshold = 0.3
+		c.RAG.ScoreThreshold = 0.5
 	}
 	if c.RAG.RerankModel == "" {
 		c.RAG.RerankModel = "BAAI/bge-reranker-v2-m3"
