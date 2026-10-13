@@ -29,6 +29,12 @@ llm:
   temperature: 0.7
   max_tokens: 16384 # Anthropic 协议必传且思考已关闭，16K 保证长文不被截断
   rate_per_minute: 20
+  # 本地调试（mode=debug）覆盖项：改用免费模型跑通流水线，不消耗生成套餐额度；
+  # 生产（release）以下三项均不生效。dev_max_tokens 不得超过所选模型输出上限
+  # （glm-4-flash 为 4095；长文不截断可换同为免费的 glm-4.5-flash，输出上限 96K）
+  dev_base_url: https://open.bigmodel.cn/api/paas/v4
+  dev_model: glm-4-flash
+  dev_max_tokens: 4095
 
 auth:
   jwt_secret: "" # 私密项：由 .env 的 AUTH_JWT_SECRET 注入（openssl rand -hex 32 生成）

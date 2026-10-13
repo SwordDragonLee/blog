@@ -54,6 +54,11 @@ type LLM struct {
 	Temperature    float32 `mapstructure:"temperature"`
 	MaxTokens      int     `mapstructure:"max_tokens"`
 	RatePerMinute  int     `mapstructure:"rate_per_minute"`
+	// 本地调试（mode=debug）覆盖项：非空时替换对应主配置，release 不生效。
+	// 用途：本地改用免费模型跑通流水线，不消耗生成套餐额度
+	DevBaseURL   string `mapstructure:"dev_base_url"`
+	DevModel     string `mapstructure:"dev_model"`
+	DevMaxTokens int    `mapstructure:"dev_max_tokens"`
 }
 
 type Auth struct {
@@ -151,7 +156,26 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("解析配置: %w", err)
 	}
 	cfg.applyDefaults()
+	cfg.applyDevOverlay()
 	return &cfg, nil
+}
+
+// applyDevOverlay 本地调试（mode=debug）时用 dev_* 逐项覆盖主模型配置：
+// 测试环境改用免费模型跑流水线，避免消耗生产套餐额度；release 模式不生效。
+// 与 rag chat_* 相同的「留空复用」惯例——非空才覆盖，yaml 中未配置时无感知。
+func (c *Config) applyDevOverlay() {
+	if c.Server.Mode != "debug" {
+		return
+	}
+	if c.LLM.DevBaseURL != "" {
+		c.LLM.BaseURL = c.LLM.DevBaseURL
+	}
+	if c.LLM.DevModel != "" {
+		c.LLM.Model = c.LLM.DevModel
+	}
+	if c.LLM.DevMaxTokens > 0 {
+		c.LLM.MaxTokens = c.LLM.DevMaxTokens
+	}
 }
 
 func (c *Config) applyDefaults() {
